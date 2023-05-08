@@ -1,0 +1,2050 @@
+---
+title: "Projet final (UAOM05)"
+author: 'Adam Benali (N.élève : 100227598)'
+subtitle: Licence Science des données (LG04201A)
+output:
+  pdf_document:
+    keep_tex: yes
+    toc: yes
+    toc_depth: 2
+    number_sections: yes
+    latex_engine: xelatex
+    pandoc_args: "--listings"
+    includes:
+      in_header: preamble.tex
+  word_document:
+    toc: yes
+    toc_depth: '2'
+---
+
+```{r include=FALSE}
+library(stargazer)
+library(knitr)
+library(kableExtra)
+library(car)
+library(dplyr)
+library(forcats)
+library(ggplot2)
+library(ggpubr)
+library(cowplot)
+library(lattice)
+library(MASS)
+library(moments)
+library(questionr)
+library(corrplot)
+library(BioStatR)
+library(DescTools)
+library(FactoMineR)
+library(factoextra)
+library(vcd)
+library(xtable)
+```
+
+\newpage
+
+# Introduction.
+
+L'impact du secteur agricole est catastrophique sur l'environnement selon Arnaud Gauffier, responsable de l'agriculture chez WWF France, *« À elle seule, l'agriculture occupe environ un tiers de la surface terrestre totale, est la cause de 80 % de la déforestation mondiale et pèse pour près de 70 % de la consommation d'eau » et « 30 % de l'empreinte carbone en France est liée à l'alimentation. »* [(Garric, 2016)](#Sources)*.* L'élevage est responsable, par exemple, selon le modèle de calcul, de 14.5 % des émissions de gaz à effet de serre. La surpêche, quant à elle, diminue, entre autres, l'abondance des populations de poissons, réduisant la diversité des espèces : *« D'après une enquête menée par le Fonds Mondial pour la nature, ainsi que WWF, 50% des espèces d'animaux marins auraient disparu en 40 ans à cause de l'activité de l'homme »* [(Marine Stewarship Council (MSC), s.d.)](#Sources)*.*
+
+L'Agence de l'Environnement et de la Maîtrise de l'Énergie[^1] est chargée de la transition écologique de la France vers la neutralité carbone à horizon 2050. L'ADEME a, entre autre, un rôle de recherche et de diffusion de l'information dans différents domaines liés à l'environnement. Depuis plusieurs décennies, maintenant, la sensibilisation de la population aux impacts environnementaux des systèmes de productions est un levier de la transition écologique. Dans un rapport de la Commission européenne sur le comportement des consommateurs européens, 67 % des consommateurs ont déclaré qu'ils achetaient des produits plus respectueux de l'environnement même s'il coûte plus cher [(Commission européenne)](#Sources). C'est pourquoi, l'ADEME met à disposition du public ses données.
+
+[^1]: ADEME : établissement public créé en 1991, affilié au ministère de la Transition écologique et solidaire.
+
+Nous nous sommes procurés la base de données « AGRIBALYSE® - Synthèse » [(ADEME, 2022)](#Sources) concernant l'impact environnemental des produits alimentaires vendus en France. L'AGRIBALYSE référence l'impact environnemental d'un produit fondé sur la méthode de l'Analyse du Cycle de la Vie [^2].
+
+[^2]: L'ACV essaye de prendre en compte, dans la quantification, des impacts d'un produit sur l'environnement : la production agricole, la transformation, le transport et la logistique, l'emballage, la préparation, et le recyclage du produit. Ce qu'on appelle du champ à l'assiette. [(Agribalyse, 2022)](#Sources)
+
+L'objectif de cette base de données s'inscrit dans la recherche et dans la diffusion de l'information. En donnant une note de l'impact environnemental d'un produit, L'ADEME espère toucher la sensibilité du consommateur sur l'impact environnemental d'un produit alimentaire, à l'instar du nutri-score.
+
+Un produit n'est pas l'estimation de l'impact d'une marque spécifique, mais l'estimation de l'impact d'un produit moyen. L'exemple donné par AGRIBALYSE pour illustrer cela est le suivant : « l'impact d'une pizza Margherita « standard », constituée de tomates « standards » conventionnelles, de gruyère et de jambon standards « conventionnels », issus des systèmes de production majoritaires aujourd'hui, ainsi que de l'emballage majoritaire observé pour ce type de produit (c'est-à-dire du carton).» [(Agribalyse, 2022)](#Sources). Le tableau de résultat synthétise par un produit moyen la pollution de produits alimentaires.
+
+Nous allons essayer de décrire au mieux la base de données en s'organisant autour de la problématique suivante, quelles informations intéressantes peut-on extraire de cette base de données ? Pour cela, nous nous poserons plusieurs questions sur ce jeu de données : quelle est la tendance des variables ? La dispersion ? Comment nos unités statistiques se distribuent-elles sur nos variables ? Nos variables, suivent-elles une loi statistique ? Existe-t-il des liens entre nos variables ? Comment le score de pollution est-il construit pour résumer l'information ? Quelle est la nature des liaisons entre nos variables ? Peut-on trouver des produits qui se ressemblent ? Et sur quels critères peut-on dire qu'ils se ressemblent ? Peut-on distinguer des produits selon le type de pollution qu'ils émettent ? Peut-on faire des groupes de produits selon les types de pollution qu'ils émettent ?
+
+Après avoir présenté et mis en forme notre jeu de données, nous décrirons, dans un premier temps, les variables selon les indicateurs statistiques de tendances et de dispersion. Nous regarderons les fréquences des variables qualitatives et la distribution des variables quantitatives. En somme, nous ferons une analyse univariée de notre jeu de données.
+
+Dans un second temps, nous chercherons des liens entre variables quantitatives et entre variables qualitatives, mais aussi entre variables quantitatives et qualitatives, nous ferons une analyse bivariée. De plus, nous chercherons à savoir comment est construit la variable "Score EF" par rapport aux autres variables.
+
+Dans un troisième temps, nous essayerons de visualiser au mieux nos données en effectuant une analyse en composante principale. Nous chercherons à trouver une classification de nos unités statistiques.
+
+\newpage
+
+# La base de données.
+
+## Importation de la base de données : AGRIBALYSE® - Synthèse.
+
+Le 3 novembre 2022, après le début du projet, le fichier AGRIBALYSE a été mis à jour. Dans cette nouvelle version, certains produits ont des meilleures notes DQR[^3], et deux variables ont été ajouté. Nous utilisons cette dernière pour étudier les produits alimentaires.
+
+[^3]: Data quality ratio, note donné entre 0 et 5, plus la note est proche de 0 plus la qualité des informations sur le produit est bonne.
+
+```{r Importation}
+df <- read.csv(file = "Data/Agribalyse_Synthese.csv",
+               header = TRUE,
+               sep = ",",
+               dec = ".",
+               fill = TRUE,
+               encoding="UTF-8")
+```
+
+## Les unités statistiques.
+
+Notre jeu de données contient 2517 unités statistiques. Les unités statistiques sont des produits alimentaires consommés en France et des produits agricoles produits en France.
+
+## Les variables.
+
+La base de données présente 11 variables qualitatives [(**Annexe 1**)](#A1) et 18 variables quantitatives [(**Annexe 2**)](#A2). Les variables qualitatives portent sur les références et les caractéristiques des produits. On retrouve parmi les caractéristiques : le groupe alimentaire, le sous-groupe alimentaire, l'emballage, le type de livraison, la préparation, la saisonnalité du produit. Les variables qualitatives portent quant à elles sur la pollution d'une part, un score calculé à partir des autres variables de pollution ("Score EF"), d'autre part, et enfin, une note de qualité sur les données (DQR).
+
+## Préparation du jeu de données.
+
+Après la préparation de nos variables [(**Appendice**)](#Appendice) la base de données se compose de 2743 unités statistique et de 25 variables.
+
+```{r Préparation des données, include=FALSE}
+# Nom des lignes
+rownames(df) <- df$Nom.du.Produit.en.Français
+df <- df[,-5]
+
+# Suppression des doublons.
+df <- df[!duplicated(df),]
+
+# Suppression des notes DQR < 3.
+df <- df[df$DQR< 3,]
+
+# Nous supprimons les colonnes inutiles
+df <- df[,-c(1,2,5)]
+
+# On trie les colonnes
+df <- df[,c(1:7,10:25,9,8)]
+
+# On modifie le nom des colonnes.
+colnames(df)<-c("Groupe aliment",
+                "Sous groupe aliment",
+                "Saisonnalité",
+                "Transport par avion",
+                "Livraison",
+                "Matériau emballage",
+                "Préparation",
+                "Changement climatique",
+                "Appauv. ozone",
+                "Rayo. ionisants",
+                "Forma. photo. ozone",
+                "Particules",
+                "Eff. non cancer.",
+                "Eff. cancer.",
+                "Acid. terre./eaux d.",
+                "Eutro. ed",
+                "Eutro. marine",
+                "Eutro. terre",
+                "Écotoxi. aqua ed",
+                "Uti. sol",
+                "Épuis. eau",
+                "Épuis. énerg.",
+                "Épuis. miné.",
+                "Score EF",
+                "DQR")
+# On remplace en supprimant les espaces
+df$Préparation[df$Préparation == "Pas de préparation "] <- "Pas de préparation"
+df$Préparation[df$Préparation == "Four "] <- "Four"
+df$Préparation[df$Préparation == "Micro-onde "] <- "Micro-onde"
+
+# On modifie le type des variables en factor
+df$`Groupe aliment` <- as.factor(df$`Groupe aliment`)
+df$`Sous groupe aliment` <- as.factor(df$`Sous groupe aliment`)
+df$Saisonnalité <- as.factor(df$Saisonnalité)
+df$`Transport par avion` <- as.factor(df$`Transport par avion`)
+df$Livraison <- as.factor(df$Livraison)
+df$`Matériau emballage` <- as.factor(df$`Matériau emballage`)
+df$Préparation <- as.factor(df$Préparation)
+```
+
+\newpage
+
+# Analyse univariée.
+
+Notre base de données présente 18 variables quantitatives et 7 variables qualitatives. Séparons notre analyse en deux temps.
+
+```{r Quali/Quanti ,include=FALSE}
+quanti <- df[,8:24]
+quali <- df[,1:7]
+```
+
+## Variables quantitatives.
+
+Commençons par regarder les statistiques des variables de pollution et de la variable "Score EF" [(**Annexe 3**)](#A3).
+
+Le résumé des variables quantitatives est présenté selon, le minimum, le premier quartile, la médiane, la moyenne, le troisième quartile, le maximum, l'écart-type.
+
+Nous pouvons tirer de ce tableau plusieurs informations intéressantes.
+
+En particulier sur l'interprétation de nos résultats :
+
+-   En moyenne, un produit alimentaire de notre base de données rejette 5.97 kg CO$_2$ eq. de la production à la consommation. Et 75 % des produits rejettent moins de 6.165 CO$_2$ eq. Le maximum est de 52.236 CO$_2$ eq.
+
+-   75 % des produits ont un score EF inférieur à 0.874 mPt/kg par produit. Le maximum étant de 5.974 mPt/kg par produit.
+
+Mais aussi sur la distribution de nos variables :
+
+-   Les variables, "Appauv. ozone", "Particules", "Eff. non cancer." et "Eff. cancer." ont des valeurs très petites. Nous constatons des échelles différentes selon les mesures, ce qui indique que nous devrons sans doute normaliser par la suite nos unités statistiques.
+
+-   Pour aucune des variables la moyenne et la médiane ne correspondent pas.
+
+-   Nous avons, pour certaines variables, des maximums éloignés de notre troisième quartile. Par exemple, la variable "Rayo. ionisants", à un troisième quartile à 1.332 et un maximum à 22,807.
+
+-   Les variables "Uti. sol" et "Epuis. eau" ont des valeurs négatives.
+
+Certaines questions se posent quant à la distribution de nos variables :
+
+-   Notre base de données, présente-t-elle des données aberrantes ?
+
+Les maximums de certaines variables semblent trop éloignés du troisième quartile.
+
+-   Nos données, suivent-elles une loi de probabilité ?
+
+Les moyennes et les médianes ne correspondent pas.
+
+-   Y a-t-il une minorité de produits avec des variables très élevées ?
+
+Si on regarde le score EF, 75 % des produits ont une note inférieure à 0.874 mPt/kg de produit.
+
+Regarder la distribution de nos variables nous permettra de répondre visuellement dans un premier temps.
+
+### Dispersion des variables.
+
+Pour confirmer ou infirmer nos à priori, nous regardons les box plots de nos variables de pollution : on regardera en particulier les variables "Changement climatique" et "Appauv. ozone", les diagrammes en boîte des autres variables sont disponibles en [**annexe 4**](#A4).
+
+```{r Box-Plot 1, include=FALSE}
+par(mfrow = c(1,2))
+bp_quanti <- mapply(quanti[,-c(17,18)],
+       FUN = function(xx,name){Boxplot(xx, main = name,id.n = 2, ylab = "")},
+       name = names(quanti[,-c(17,18)]))
+```
+
+```{r Box-Plot 2, echo = FALSE, out.width="60%", fig.align='center'}
+par(mfrow = c(1,2), mar = c(2, 3, 3, 2))
+bp_quanti_cc_ao <- mapply(quanti[,c(1,2)],
+       FUN = function(xx,name){Boxplot(xx, main = paste0("Boxplot de 
+\"", name,"\""),
+                                       id.n = 2, ylab = name, cex.main= 0.9)},
+       name = names(quanti[,c(1, 2)]))
+```
+
+Comme attendues, nos variables présentent des produits sortant des box plots. De plus, nous pouvons constater que certaines unités statistiques ont des valeurs si grandes qu'elles "écrasent" nos boîtes, cela est particulièrement marquant pour la variable "Appauv. ozone". Parmi les 166 unités statistiques sortant des boxplots nous retrouvons souvent les mêmes. En enlevant les doublons, on trouve 68 produits sortant des diagrammes en boîtes.
+
+```{r Données aberrantes, include=FALSE}
+données_aberrantes <- unlist(bp_quanti)
+données_aberrantes <- données_aberrantes[-which(duplicated(données_aberrantes))]
+données_aberrantes <- df[données_aberrantes,]
+```
+
+Regardons comment ces données se répartissent les données en-dehors des diagrammes en boîte selon le groupe d'aliments.
+
+```{r Diagramme données aberrantes, echo = FALSE, fig.align='center', out.width="80%"}
+# Création table
+sg_aliment <- as.data.frame(sort(table(données_aberrantes$`Groupe aliment`),decreasing = T))
+sg_aliment <- sg_aliment[-which(sg_aliment$Freq<1),]
+sg_aliment$Var1 <- droplevels(sg_aliment$Var1, which(sg_aliment$Freq<1))
+colnames(sg_aliment) <- c("Sous groupe","Freq")
+sg_aliment$Freq <- as.numeric(sg_aliment$Freq)
+sg_aliment <- sg_aliment %>% mutate(Pourcentage = (Freq * 100) / sum(Freq))
+
+# Diagramme circulaire
+ggplot(sg_aliment, aes(x="", y=Pourcentage, fill=`Sous groupe`)) + 
+  geom_bar(width = 1, stat = "identity") + 
+  xlab("")+
+  coord_polar("y", start=0) +
+  ggtitle("Digramme circulaire des produits 
+sortant des boxplots selon le groupe d'aliments")
+```
+
+Plus du quart des produits viennent du groupe "viandes, œufs, poissons". La question de savoir, "quel groupe d'aliments pollue le plus ?", reviendra plus tard dans notre analyse, mais nous avons une petite idée du groupe avec les pires scores EF.
+
+Nous pouvons déjà commencer à apporter des arguments supplémentaires aux questions posées précédemment :
+
+-   Il y a effectivement des unités statistiques sortant des diagrammes en boîte, mais peut-on parler de données aberrantes ?
+
+Une donnée aberrante est effectivement une donnée éloignée de la distribution "normale" de nos variables. Mais ici, nous avons supprimé les données de mauvaises qualités [(**Appendice**)](#AppUs). Les produits sortants des boxplots, sont en réalités des produits polluants énormément. Il y a effectivement des données polluant beaucoup en comparaison des autres produits.
+
+-   Nos données suivent-elles une loi normale ?
+
+Les moyennes et les médianes ne correspondent pas. Nous pouvons aussi, nous appuyer sur les diagrammes en boîte d'une variable, pour supposer la normalité d'une variable. Si la barre de la médiane se trouve au centre de notre box-plot, alors on peut à priori continuer notre analyse pour savoir s'il s'agit bien d'une loi normale. Ici les boxplots semblent clairement s'éloigner d'une loi normale. Pour nous en convaincre regardons les histogrammes des variables de pollution uniquement.
+
+### Distribution des variables quantitatives.
+
+#### Histogramme des variables quantitatives.
+
+Dans [l'**annexe 5**](#A5), visuellement, il semble difficile de croire que nos variables suivent une distribution normale, surtout en regardant la ligne décrivant la densité. Les variables sont plus susceptibles de suivre une distribution log-normale. (Une variable aléatoire $X$ à valeurs dans $]0,+\infty[$ suit une loi log-normale de paramètres $N(m,\sigma^2)$, si $Y=ln(X)$ suit la loi $N(m,\sigma^2)$.)
+
+Nous allons donc effectuer une transformation pour essayer de revenir à une loi normale. Pour cela, nous allons passer par une transformation de Box-Cox, afin de nous assurer qu'une transformation log-normale est adapté.
+
+#### Transformation de Box-Cox.
+
+Nous devons trouver pour chaque variable la transformation qui semble la plus pertinente et analyser leur variabilité :
+
+La transformation de Box-Cox donne la fonction suivante : $$
+f(x,\lambda) = 
+    \begin{cases}
+        \frac{x^{\lambda} - 1}{\lambda} & (\lambda \neq 0)\\        
+        log(x) & (\lambda = 0)
+    \end{cases}
+\ \forall x \in \mathbb{R}^*_+, \ \forall \lambda \in R
+$$
+
+En fonction de la valeur de lambda, la transformation de nos variables change, ce qui donne les transformations suivantes :
+
+| $\lambda$ | Transformation :     |
+|-----------|----------------------|
+| -2        | $\frac{1}{x^2}$      |
+| -1        | $\frac{1}{x}$        |
+| -0.5      | $\frac{1}{\sqrt{x}}$ |
+| 0         | $log(x)$             |
+| 0.5       | $\sqrt{x}$           |
+| 1         | $x$                  |
+| 2         | $x^2$                |
+
+Si l'estimation de $\lambda$ est proche d'une des transformations suggérées, il est conseillé de prendre l'une des transformations ci-dessus, sinon il faut prendre la transformation passant par $\lambda$.
+
+Nous allons automatiser nos transformations :
+
+-   Création d'une fonction "trans_bc", qui prend une variable en entrée et renvoie en fonction de $\lambda$ la variable transformée selon le tableau et les explications ci-dessus.
+
+-   Création de la matrice "bc_res" avec en colonne :
+
+    -   Le lambda.
+
+    -   le lambda arrondi.
+
+    -   La transformation effectuée.
+
+-   Dans une boucle, nous estimons le $\lambda$ d'une variable avec la fonction "powerTransform". Ensuite, la fonction effectue la transformation à partir du lambda arrondie. Enfin, on stocke dans la variable "trans_quanti" le résultat de la transformation.
+
+```{r Fonction Box-Cox, include=FALSE}
+trans_bc <- function(x, lambda){
+  stopifnot(all(x > 0))
+  x <- x/exp(mean(log(x))) # Mise à l'échelle
+  result <- list()
+  # Transformation en fonction du tableau
+  if(lambda == -2){
+    result$x <- 1/x**2
+    result$transfo <- "1/x^2"
+  }else if (lambda == -1) {
+    result$x <- 1/x
+    result$transfo <- "1/x"
+  }else if (lambda == -0.5) {
+    result$x<- sqrt(x)
+    result$transfo <- "1/racine(x)"
+  }else if (lambda == 0) {
+    result$x <- log(x)
+    result$transfo <- "log(x)"
+  }else if (lambda == 0.5) {
+    result$x <- sqrt(x)
+    result$transfo <- "racine(x)"
+  }else if (lambda == 1) {
+    result$x <- x
+    result$transfo <- "x"
+  }else if (lambda == 2) {
+    result$x <- x**2
+    result$transfo <- "x^2"
+  }else{
+    result$x <- (x^lambda - 1)/lambda
+    result$transfo <- "Box-cox"
+  }
+  return(result)
+}
+```
+
+```{r Box-Cox, echo=FALSE}
+# Création de la matrice avec nos résultats
+bc_res <- matrix(nrow = length(quanti[,-c(17,18)]), 
+                ncol = 3,
+                dimnames = list(c(colnames(quanti[,-c(17,18)])),
+                                  c("lambda",
+                                    "lambda arrondi",
+                                    "Transformation")
+                                )
+                )
+
+# Création du dataframe avec les variables transformées
+trans_quanti <- quanti[,-c(17,18)]
+for (j in 1:length(trans_quanti)){
+  # stockage de la variable quanti dans le vecteur x
+  x <- quanti[,j]
+  
+  # Séparation des variables, 
+  # avec valeurs positives et négatives.
+  if(all(x>0)){
+    # Estimation de lambda
+    res <- powerTransform(x)
+    bc_res[j,1] <- round(as.numeric(res$lam[1]),4)
+    bc_res[j,2] <- round(as.numeric(res$roundlam[1]),4)
+    
+    #Transformation
+    res_trans_bc <- trans_bc(x,as.numeric(res$roundlam[1]))
+    bc_res[j,3]<- res_trans_bc$transfo
+    trans_quanti[,j] <- res_trans_bc$x
+  }else{
+    bc_res[j,1] <- NA
+    bc_res[j,2] <- NA
+    bc_res[j,3] <- "Valeurs négatives"
+  }
+}
+
+bc_res %>%
+  kable("latex", booktabs = T, caption = "Transformation de Box-Cox") %>%
+  kable_styling(latex_options = c("striped", "HOLD_position", "center"))
+```
+
+Deux variables ont des valeurs négatives, quatre variables ont une transformation logarithmique, et le reste des variables ont une transformation de Box-Cox.
+
+##### Distribution log-normale.
+
+Après la transformation logarithmique des variables "Rayo. ionisants", "Particules", "Acid. terre./eaux d.", "Épuis. énerg.", regardons leurs histogrammes et leurs droites de Henry [(**Annexe 6**)](#A6).
+
+Les histogrammes ne ressemblent malheureusement pas à une distribution d'une loi normale après la transformation. Cependant la droite de Henry semble bien alignée, sauf aux extrémités. Il semble aussi que certaines variables aient des mesures identiques sur beaucoup de produits. Vérifions avec un test de Shapiro-Wilks si ces variables suivent une loi normale.
+
+**Test de Shapiro-Wilks sur la variable transformée "Rayo. ionisants".**
+
+\rule{1\linewidth}{0.5pt}
+
+```{r Test SW 1, echo=FALSE, results='asis'}
+with(trans_quanti, shapiro.test(`Rayo. ionisants`))
+```
+
+\rule{1\linewidth}{0.5pt}
+
+**Test de Shapiro-Wilks sur la variable transformée "Particules" :**
+
+\rule{1\linewidth}{0.5pt}
+
+```{r Test SW 2, echo=FALSE, results='asis'}
+with(trans_quanti, shapiro.test(Particules))
+```
+
+\rule{1\linewidth}{0.5pt}
+
+**Test de Shapiro-Wilks sur la variable transformée "Acid. terre./eaux d." :**
+
+\rule{1\linewidth}{0.5pt}
+
+```{r Test SW 3, echo=FALSE, results='asis'}
+with(trans_quanti, shapiro.test(`Acid. terre./eaux d.`))
+```
+
+\rule{1\linewidth}{0.5pt}
+
+**Test de Shapiro-Wilks sur la variable transformée "Épuis. énerg." :**
+
+\rule{1\linewidth}{0.5pt}
+
+```{r Test SW 4, echo=FALSE, results='asis'}
+with(trans_quanti, shapiro.test(`Épuis. énerg.`))
+```
+
+\rule{1\linewidth}{0.5pt}
+
+Après transformation, nous pouvons conclure que les variables ne suivent pas de loi normale, cependant, la transformation nous permet de constater le caractère multi-modal de nos variables.
+
+##### Box-cox :
+
+Comme pour les variables précédentes, regardons les variables ayant subi une transformation de Box-Cox [(**Annexe 7**)](#A7) et vérifions la normalité de nos variables [(**Annexe 8**)](#A8).
+
+Après transformation, aucune variable ne suit une loi normale et comme précédemment, nous constatons le caractère multimodal de nos variables.
+
+L'explication la plus probable est l'absence d'une variable expliquant la multi-modalité pour nos variables.
+
+## Variables qualitatives.
+
+En fonction du nombre de modalités, la représentation graphique ne va pas être la même. Par exemple, la variable "Sous groupe aliment" contient 55 modalités [(**Annexe 9**)](#A9), on ne représentera pas cette variable de la même façon que la variable "Préparation" qui en a 7.
+
+### Tableau des fréquences.
+
+Le tableau des fréquences [(**Annexe 10**)](#A10) nous permet de dire que certaines variables présentent peu de produits dans certaines modalités. Les variables "Saisonnalité" et "Transport par avion" contiennent chacune une modalité avec plus de 99 % des produits. Nous ne visualiserons donc pas graphiquement les résultats. Nous pourrons regarder graphiquement, via un diagramme en barre, la répartition des produits selon les variables "Groupe aliment", "Livraison" et "Préparation". Enfin, nous regarderons avec un diagramme circulaire les modalités les plus fréquentes des deux dernières variables.
+
+### Modalités des variables "Saisonnalité" et "Transport par avion".
+
+Nous avons noté, précédemment, que ces deux variables ont des modalités avec peu de produits. La variables "Saisonalité" a 2 produits "de saison" et 2 autres produits "hors saison", le reste des aliments se trouvent dans la catégorie "mix de consommation FR". Ensuite, dans la variable "Transport par avion" nous avons 2 autres produits importés "par avion".
+
+Quels produits prennent ces modalités ?
+
+```{r Modalités Rares 1, echo=FALSE}
+# Saisonnalité
+quali %>% 
+  subset(subset = Saisonnalité == 0 | Saisonnalité == 1,
+         select = "Saisonnalité") %>%
+  kable("latex", booktabs = T, caption = "Produits \"de saison\" et \"hors saison\" (0 : hors saison ; 1 : de saison ; 2 : mix de consommation FR)") %>%
+  kable_styling(latex_options = c("striped", "HOLD_position", "center"))
+```
+
+```{r Modalités Rares2, echo=FALSE}
+# Transport par avion
+quali %>% 
+  subset(subset = `Transport par avion` == 1,
+         select = "Transport par avion") %>%
+  kable("latex", booktabs = T, caption = "Produits \"transportés par avion\" code avion (1 : par avion)") %>%
+  kable_styling(latex_options = c("striped", "HOLD_position", "center"))
+```
+
+De ce tableau certaines questions se posent naturellement :
+
+-   Les fraises et tomates hors saison, polluent-elles plus que les fraises et tomates de saison ?
+
+Les fraises et les tomates hors saison ont des paramètres de pollution plus élevés que les mêmes produits de saison [(**Annexe 11**)](#A11).
+
+-   Les produits transportés par avion polluent-ils plus que les autres produits ?
+
+Pour cela, on regarde le score EF, il est censé résumer nos variables de pollutions.
+
+```{r Score EF des modalités rares, echo=FALSE}
+# Transport par avion
+
+quanti[c("Haricot vert importé par avion, cru", 
+           "Mangue importée par avion, pulpe, crue"),] %>% 
+  subset(select = "Score EF") %>%
+  kable("latex", booktabs = T, caption = "Tableau des modalités rares") %>%
+  kable_styling(latex_options = c("striped", "HOLD_position", "center"))
+```
+
+La mangue, importée par avion, pollue globalement plus que la moyenne des produits (0.689 mPt/kg de produit), et les haricots globalement moins. Cependant, on ne peut pas en conclure que les produits importés par avion polluent plus ou moins que les autres aliments à partir de ces informations.
+
+### Diagrammes en barre.
+
+Visualisons les diagrammes en barre des variables "Groupe aliment", "Livraison" et "Préparation" :
+
+```{r Diagramme en barre, echo=FALSE, fig.align='center'}
+groupe_aliment <- data.frame(table(quali[,1])) %>% 
+  arrange(desc(Freq))
+ggplot(groupe_aliment, aes(x=fct_reorder(Var1, Freq), y=Freq)) + 
+  geom_bar(stat = "identity", width=0.2, fill = "#0072B2") +
+  ylab("Nombre de produits") +
+  xlab("Modalités") +
+  coord_flip() + 
+  ggtitle("Diagramme en barre de la répartition \ndes produits selon le groupe d'aliments")
+```
+
+Les modalités les plus représentées, pour la variable "Groupe aliment" sont les produits "viande, œufs, poissons", les produits "fruits, légumes, légumineuses et oléagineux" et les "produits céréaliers".
+
+En [annexe 12](#A12), pour les variables "Livraison" et "Préparation", presque 50% des aliments sont livrés glacé et 66 % des aliments ne nécessitent pas de préparation.
+
+Des questions se posent déjà sur la pollution de certains groupes d'aliments : existe-t-il des groupes d'aliments qui polluent plus que d'autres ? Ensuite, existe-t-il des relations entre les modalités de certaines variables ? (Par exemple, la livraison et le score EF.)
+
+### Diagramme circulaire.
+
+Nous allons essayer de représenter dans des diagrammes circulaires la part de chaque modalité des variables "Sous groupe aliment" et "Matériau emballage".
+
+```{r Diagramme circulaire 1, echo=FALSE, fig.align='center', out.width="80%"}
+# Création table
+bp_sg_aliment <- quali$`Sous groupe aliment`%>%
+  as.character() %>%
+  as.data.frame() %>%
+  rename(.,Sg_aliment = .) %>%
+  mutate(Sg_aliment = fct_lump_n(fct_infreq(Sg_aliment), n = 5, other_level = "Autres")) %>%
+  group_by(Sg_aliment)%>% 
+  summarise(count=n()) %>%
+  mutate(Pourcentage=round(count/sum(count),4)*100)
+  
+# Diagramme circulaire
+ggplot(bp_sg_aliment, aes(x="", y=Pourcentage, fill=Sg_aliment)) + 
+  geom_bar(stat="identity", width=1) + 
+  coord_polar("y", start=0)+ 
+  xlab("") +
+  ggtitle("Digramme circulaire de la répartition \ndes produits selon le sous groupe d'aliments")
+```
+
+Nous avons donc agrégé dans le facteur "Autres" les modalités des 5 plus grandes catégories. Nous avons ensuite, affichées le diagramme circulaire. Les 3 plus grands sous-groupes : "légumes", "charcuteries" et "fromages" se partagent presque 25 % des produits.
+
+```{r Diagramme circulaire 2, echo=FALSE, fig.align='center', out.width="80%"}
+# Création table
+
+bp_me <- quali$`Matériau emballage`%>%
+  as.character() %>%
+  as.data.frame() %>%
+  rename(.,`Matériau emballage` = .) %>%
+  mutate(`Matériau emballage` = fct_lump_n(fct_infreq(`Matériau emballage`), n = 5, other_level = "Autres")) %>%
+  group_by(`Matériau emballage`)%>% 
+  summarise(count=n()) %>%
+  mutate(Pourcentage=round(count/sum(count),4)*100)
+
+# Diagramme circulaire
+ggplot(bp_me, aes(x="", y=Pourcentage, fill=`Matériau emballage`)) + 
+  geom_bar(width = 1, stat = "identity")+ 
+  xlab("") +
+  coord_polar("y", start=0) +
+  ggtitle("Digramme circulaire de la répartition \ndes produits selon le matériau d'emballage")
+```
+
+Nous avons appliqué la même méthode que pour la variable "Sous groupe aliment". Les 3 premiers matériaux d'emballage utilisés sont les LDPE[^4], les PS[^5] et les PP[^6]. A eux trois, ils représentent plus de 50 % des matériaux d'emballage.
+
+[^4]: Polyéthylène basse densité (PEBD ou LDPE) est malléable et flexible. Sa grande pureté permet l'emploi de ce matériau plastique dans de nombreuses applications industrielles. Il est notamment très utilisé pour la fabrication des sacs plastique bretelles que l'on connait aussi sous le nom de sac de caisse. [(Mon-Emballage.com, s.d.)](#Sources)
+
+[^5]: Le polystyrène est un thermoplastique. Le polystyrène de base, appelé PS cristal, est une matière dure et cassante, pouvant être transparente ou colorée. Il peut servir à fabriquer des produits rigides ou en mousse. Le plastique PS est très utilisé pour la fabrication des barquettes plastique sans couvercle, comme les barquettes de frites. [(Mon-Emballage.com, s.d.)](#Sources)
+
+[^6]: Le polypropylène est une variété de plastique très répandue dans l'agroalimentaire. C'est un matériau alliant rigidité et souplesse lors des chocs. Il reprendra naturellement sa forme après un choc de moyenne amplitude. Le plastique PP est très utilisé pour les barquettes plastique micro-ondables et les barquettes plastique scellables. Il est également résistant pour passer au congélateur. [(Mon-Emballage.com, s.d.)](#Sources)
+
+## Conclusion de l'analyse univariée.
+
+Plusieurs informations intéressantes ressortent de l'analyse univariée. Nous en apprenons plus sur la distribution des variables. En effet, nous savons maintenant qu'une minorité de produits de variables polluent énormément. Il semble que parmi les produits polluants énormément, beaucoup appartiennent au groupe "viande, œufs, poissons". Ensuite, nous n'avons pas réussi à ramener nos variables à une distribution connu.
+
+Sur les variables qualitatives "Saisonnalité" et "Transport par avion", nous avons très peu de produits pour certaines modalités. On a donc pas assez de données pour savoir si, en fonction de la saisonnalité ou du type de transports, les produits sont plus ou moins polluants. Par la suite, nous avons vu quelles étaient les modalités les plus fréquentes, pour chaque variable.
+
+On se rend compte assez rapidement des limites de la simple analyse univariée. Beaucoup de questions, que nous pouvons nous poser, tendent vers le croisement des variables.
+
+\newpage
+
+# Analyse bivariée.
+
+Nous l'avons vu au cours de la première partie de cette analyse, nous nous sommes posés des questions qui s'écartaient de la simple analyse univariée. Nous allons essayer, dans cette seconde partie, de mieux comprendre, les liens entre nos variables. Dans un premier temps, nous allons commencer comme notre première partie, avec les variables quantitatives.
+
+## Croisement des variables quantitatives.
+
+### Nuages de points.
+
+Nous commençons par une analyse des nuages de points pour visualiser le croisement entre nos variables quantitatives. [(**Annexe 13**)](#A13)
+
+Nous trouvons plusieurs types de nuages de points pour chaque variable :
+
+-   Le lien linéaire : le croisement des variables, donne une ligne, signe que les variables ont un lien linéaire (positif quand c'est le cas). Le croisement des variables, "Particules" et "Eutro. terre.", est un exemple.
+
+-   Les nuages présentant plusieurs liens linéaires différents. Par exemple, sur le croisement des variables "Acid. terre./eaux d." et "Eutro. marine" nous pouvons voir plusieurs liens linéaires.
+
+-   Les nuages présentant peu ou pas de lien linéaire. Les exemples les plus frappants sont les variables "Appauv. ozone", qui donne un résultat constant sauf pour une valeur aberrante.
+
+Pour confirmer ce que l'on constate visuellement, et pour avoir un ordre de grandeur de l'intensité de la liaison entre nos variables, nous regardons les coefficients de corrélation. Dans un premier temps les coefficients de corrélation de Pearson.
+
+### Matrice des corrélations.
+
+```{r Tableau correlations pearson, fig.height=6.5, fig.width=6.5, echo = FALSE, fig.align='center', out.width="90%"}
+corrplot(cor(quanti, method = "pearson"), method = "number", tl.cex = 0.7, number.cex = 0.6, type = 'upper', title = "Table des corrélations (Pearson)", mar=c(0,0,2,0),)
+```
+
+L'analyse visuelle, nous a donné les tendances entre nos variables. Les variables "Epuis eau" et "Appau ozone" ont des coefficients proches de 0 avec les autres variables. Donc il n'y a pas de liens avec les autres variables. Nous pouvons par contre rajouter la variable "Epuis. eau", qui a des coefficients faibles, et la variable "Rayo. ionisants", qui a uniquement une corrélation forte avec la variable "Epuis. énerg.".
+
+Nous retrouvons également, à l'inverse, des corrélations fortes entre certaines variables. Par exemple, "Particules" et "Acid. terre./eaux d." ont un coefficient égal à 1. Ou encore comme nous l'avons constaté visuellement : un coefficient de corrélation de 0.99 entre les variables "Particules" et "Eutro. terre.".
+
+Visuellement, nous ne constatons pas d'autres liaisons que des liens linéaires entre les variables. Mais par prudence, nous pouvons regarder les coefficients de Spearman [(**Annexe 14**)](#A14).
+
+Il y a avec la méthode de Spearman, une augmentation de certains coefficients qu'il faut prendre en compte. En effet, l'augmentation, ou la baisse des coefficients, indiquent un lien monotone entre nos variables. Mais n'infirmons pas notre analyse visuelle. Effectivement, lorsque l'on regarde de plus près certains nuages de points, ceux-ci semblent avoir des liens linéaires, ce qui influe sur le coefficient de corrélation selon Pearson ou Spearman. Par exemple, les variables "Acid. terre./eaux d." et "Eutro. marine":
+
+```{r Nuage de points, echo=FALSE, out.width="70%", fig.align='center'}
+plot(quanti$`Acid. terre./eaux d.`, quanti$`Eutro. marine`,
+     xlab = "Acid. terre./eaux d.", ylab ="Eutro. marine",
+     main = " Nuage de point de la variable \"Eutro. marine\" 
+selon la variable \"Acid. terre./eaux d.\"")
+```
+
+Le croisement semble donner deux liens linéaires différents, et ce n'est pas la première fois que nous le constatons. Nous avons vu dans notre analyse univariée que nos variables suivent des lois multimodales. Et ici, nous constatons que les unités statistiques, ont deux liens linéaires différents.
+
+Une variable que nous n'avons que très peu analysé depuis le début de notre analyse, le score EF, est intéressant à regarder dans cette partie de notre analyse. En effet, ce score agrège les 16 variables de pollutions essayons de décomposer cette variable.
+
+### Variable "Score EF".
+
+En premier lieu, nous savons que la variable "Score EF" est la somme de chacune des variables multipliée par deux facteurs, le premier, le facteur de normalisation, le deuxième, le facteur de poids.
+
+La formule ainsi donnée sur [Eco-balyse](#Sources) :
+
+$$
+Score \ EF = \sum_{i=1}^{16} \frac{Impact_{i}}{Normalisation_i} \times Pondération_i
+$$
+
+Avec $Impact_i$ la variable de pollution $i$ du produit, $Normalisation_i$ étant le coefficient de normalisation de la variable, et $Pondération_i$ le facteur de pondération (de poids) de la variable.
+
+Appliquer une régression linéaire multiple est possible ici, on pourra retrouver les coefficients pour trouver le score EF. Cela permettra en plus de juger de la qualité de la base de données en retrouvant les résultats de la base de données.
+
+#### Régression linéaire multiple.
+
+En effectuant la régression linéaire multiple, nous trouvons les résultats suivants :
+
+```{r R², results='asis', echo=FALSE}
+rlm1 <- lm(`Score EF`~., data = quanti)
+srlm1 <- summary(rlm1)
+cat("-  R² :", round(srlm1$r.squared,1))
+```
+
+```{r R² ajusté, results='asis', echo=FALSE}
+cat("-  R² ajusté :", round(srlm1$adj.r.squared,1))
+```
+
+```{r RSE, results='asis', echo=FALSE}
+cat("-  Erreur résiduelle standard :", srlm1$sigma, "avec", srlm1$df[2],"degrés de liberté")
+```
+
+-   Résidus
+
+```{r Résidus, echo = FALSE, results='asis'}
+stargazer(data.frame(rlm1$residuals),header = F, title = "Résidus du modèle", table.placement = "H",
+          summary.stat = c("min","p25","median","p75","max"), label = "Résidus du modèle")
+```
+
+-   Coefficients :
+
+```{r Coefficients regression lineaire, echo = FALSE, results='asis'}
+options(xtable.comment = FALSE)
+xtable(rlm1, caption = "Tableau des coefficients du modèle de régression",
+       label = "Tableau des coefficients du modèle de régression")
+```
+
+Pour l'interprétation de nos coefficients et la p-value on fixe un risque $\alpha$ à $5\%$.
+
+Alors effectivement, nous avons un $R^2$ de 1, c'est-à-dire, que le coefficient de corrélation entre les variables explicatives et la variable expliquée est très fort, la qualité d'ajustement est très bonne. De plus, on ne tient pas compte de l'"Intercept", la p-value est supérieure à $5\%$, le coefficient n'est pas significatif. Il n'est pas significativement différent de 0. Les autres coefficients sont significatifs au seuil $\alpha$.
+
+Mais nous pouvons constater un problème : les résidus sont différents de zéro. En effet, nous savons que le résultat est un calcul sans coefficient aléatoire, l'erreur devrait donc être de 0.
+
+#### Résidus.
+
+Pour essayer d'identifier d'où vient l'erreur, regardons tout d'abord les produits avec la plus grosse erreur.
+
+```{r Erreur max, echo=FALSE, results='asis'}
+cat("Il semble que le produit \"", names(which.max(rlm1$residuals)),"\" est le produit avec la plus grande erreur (", rlm1$residuals[52],"). Le second produit est \"", names(which.max(rlm1$residuals)), "\" avec ", rlm1$residuals[656]," d'erreur.", sep="")
+```
+
+Plusieurs pistes de recherche, pour savoir d'où provient l'erreur, sont envisageables :
+
+-   les produits ont des variables de pollution avec des valeurs extrêmes ?
+
+Les produits n'ont pas de valeurs extrêmes.
+
+-   Les produits ont des notes "DQR" très proches de 3 ?
+
+Les produits n'ont pas des notes "DQR" proches de 0, mais elles sont acceptables. [(**Annexe 15**)](#A15)
+
+Ces pistes ne donnant rien, nous avons mis entre parenthèses l'analyse bivariée pour comprendre d'où l'erreur peut venir. Pour cela, nous sommes allés chercher les vrais coefficients sur Internet.
+
+#### Calcul "Score EF" :
+
+Après de nombreuses recherches, nous trouvons les coefficients de normalisation et de pondération. ([**Annexe 16**](#A16) et [**annexe 17**](#A17)). (Notons que la variable avec le plus grand poids dans le "Score EF" est "Changement climatique".)
+
+```{r Importation des facteurs, echo=FALSE}
+facteur <- read.csv(file = "Data/facteur.csv",
+                    sep = ";",
+                    dec = ".",
+                    header = TRUE,
+                    fill = TRUE,
+                    encoding="UTF-8")
+
+```
+
+Pour essayer de comprendre d'où peut venir l'erreur, nous effectuons le calcul selon ce que nous avons trouvé. Nous avons donc la formule suivante :
+
+$$
+Score \ EF = \sum_{i=1}^{16} \frac{Impact_{i}}{\frac{Normalisation_i}{1000}} \times Pondération_i
+$$
+
+La division par 1000 de notre coefficient de normalisation vient de l'échelle de mesure de notre score EF, la normalisation est exprimée en Pt, or nous avons le score EF exprimé en mPt dans notre base de données.
+
+```{r Score EF à la main, echo=FALSE}
+### Resultat pour toute la base de données
+df_test = df
+
+sum = 0
+ef_alm <- c()
+for (j in 1:nrow(quanti)){
+  for(i in 1:16){
+    sum = sum + ((quanti[j,i] / (facteur$nf_3.1[i]/1000)) * facteur$w_factor_3.1[i])
+    
+  }
+  ef_alm <- c(ef_alm, sum)
+  sum = 0
+}
+```
+
+Si l'on regarde les coefficients de la formule et les coefficients de la régression linéaire, on trouve presque la même chose [(**Annexe 18**)](#A18). Cependant, cela ne résout pas la problématique de nos coefficients. Si l'on regarde le produit avec la plus grande erreur, on trouve
+
+```{r Comparaison scores EF, echo=FALSE, results='asis'}
+cat("dans la base de données un \"Score EF\" de : ", quanti[52,17]," mPt/kg de produit,", " dans la régression un \"Score EF\" de ", rlm1$fitted.values[52], " mPt/kg de produit et avec le calcul \"à la main\" ",ef_alm[52],".", sep = "")
+```
+
+On trouve des résultats proches pour la régression linéaire et le calcul "à la main". Même si l'erreur entre notre variable "Score EF" et notre régression est minime, elle rend notre modèle faux. Le modèle, qui devait nous renseigner sur la qualité de notre jeu de données, et en particulier sur la qualité, nous aura permis de nous mettre sur la piste d'une erreur plus globale sur notre jeu de données.
+
+#### Le problème du "Score EF".
+
+Pour comprendre le problème de notre variable "Score EF", il nous a fallu regarder la version Excel de notre jeu de données. Et nous avons premièrement constaté la chose suivante : nous avons exactement le même score EF pour les deux produits alors que les indicateurs de pollutions sont différents [(**Annexe 19**)](#A19). De plus, lorsque l'on regarde la base de données au format Excel, on remarque que le "Code AGB" a été modifié et que le nom de la variable "LCI Name" est le même.
+
+![Score EF des produits "Sauce au poivre"](./Images/Score%20EF.png)
+
+Du point de vue de la formule donnée, on peut en conclure qu'il y a une erreur dans les "Score EF" pour ce produit et on peut étendre cette remarque à d'autres produits, car ce produit n'est pas le seul à avoir été modifié ([**ici**](https://data.ademe.fr/data-fair/api/v1/datasets/agribalyse-31-synthese/metadata-attachments/ADEME%20-%20AGRIBALYSE%20-%20v3.1%20-%20Synth%C3%A8se.xlsm) le fichier Excel). Nous n'avons pas d'informations allant dans le sens d'une rectification à posteriori des scores EF, ce qui remet en doute la qualité de la variable "Score EF".
+
+Cependant, cela ne devrait pas impacter le reste de notre analyse, mais cette erreur est à prendre en compte.
+
+## Croisement des variables qualitatives.
+
+### Tableau de contingence "Préparation"/"Livraison".
+
+```{r table Préparation/Livraison, echo=FALSE}
+tbl <- table(quali$Livraison, quali$Préparation)
+```
+
+La question est de savoir s'il y a indépendance entre ces deux variables qualitatives.
+
+Le tableau de contingence est disponible en [**annexe 20**](#A20). Nous pouvons aussi regarder le tableau de contingence des fréquences, selon les marges du tableau. Ici, nous pouvons le faire selon les deux marges, car les deux marges sont libres.
+
+Tous les résultats du tableau de contingence sont interprétables, un des plus intéressants étant : si la livraison est de type "Ambiant (court)" alors le produit ne nécessite pas de préparation. Nous pouvons faire ce constat sur d'autres croisements de modalités du tableau. Mais cela ne nous renseigne pas davantage sur le lien possible entre deux variables.
+
+### Représentation graphique de l'indépendance.
+
+Nous pouvons utiliser le diagramme d'association pour représenter l'indépendance. Le diagramme d'association représente pour chaque couple de modalités l'écart entre la valeur théorique et la valeur observée. Ici, chaque rectangle représente cet écart. La couleur dépend du signe de l'écart.
+
+```{r Diagramme associations, echo=FALSE, fig.align='center'}
+opar <- par(las = 1, cex = 0.7, mar = c(5,15,2,2))
+
+assocplot(tbl, xlab = "Livraison" , main = "Diagramme d'association des variables
+\"Préparation\" et \"Livraison\"", 
+          c("lightblue", "pink"), space = )
+
+title(ylab = "Préparation", line = 13)
+
+par(opar)
+```
+
+Pour ces deux variables, nous observons quelques rectangles avec un air proche de 0. Mais, à priori, nous ne pouvons pas dire que les deux variables sont indépendantes. La représentation graphique aide à l'interprétation, mais ne permet pas de conclure non plus. Pour trancher, il faut faire un test d'indépendance du khi deux.
+
+### Test d'indépendance du khi-deux.
+
+Nous souhaitons effectuer un test d'indépendance du khi-deux, on formule les hypothèses :
+
+$$
+\begin{cases}
+ H_0 \ : \text{La livraison est indépendante du groupe d'aliments} \\
+ H_1 \ : \text{La livraison dépend du groupe d'aliments} 
+\end{cases}
+$$ Nous fixons un risque $\alpha$ à $5\%$.
+
+\rule{1\linewidth}{0.5pt}
+
+```{r khi2-test 1, echo=FALSE, results='asis'}
+chisq.test(tbl)
+```
+
+\rule{1\linewidth}{0.5pt}
+
+Nous constatons un message d'erreur quand nous voulons connaître le résultat du test du khi-deux. Il peut y avoir plusieurs raisons, généralement, les valeurs théoriques sont inférieures à 5, c'est ce que l'on remarque ici [(**Annexe 21**)](#A21).
+
+Le premier réflexe est d'utiliser le test exact de Fisher. Cependant, nous ne pouvons pas l'effectuer, car le tableau est trop grand. Nous utilisons le paramètre "simulate.p.value" pour effectuer notre test.
+
+En quoi consiste le "simulate.p.value" ? Ce paramètre permet d'évaluer la p-value avec la méthode MCMC (Markov chain Monte Carlo) pour supprimer la contrainte des effectifs théoriques. Cette méthode simule la loi de distribution de la statistique de test et détermine sa probabilité d'exister. L'idée est de comparer la statistique de test sur nos observations à celle obtenue à partir des simulations tirées aléatoirement avec remise. [(lemakistatheux, s.d.)](#Sources)
+
+\rule{1\linewidth}{0.5pt}
+
+```{r khi2-test simulate.p.value 1,  echo=FALSE, results='asis'}
+chisq.test(tbl, simulate.p.value = T)
+```
+
+\rule{1\linewidth}{0.5pt}
+
+Résultat du test : La p-value est la probabilité d'obtenir ce que l'on observe, ou pire, sous l'hypothèse d'indépendance. La probabilité d'obtenir ce $X^2$ , ou pire, est de 0.0004998 sous l'hypothèse d'indépendance, autrement dit, il est peu probable d'avoir ce résultat, nous rejetons $H_0$ au seuil $\alpha$ de 5 %.
+
+### Les autres variables.
+
+Après avoir effectué le test pour le couple de variable "Préparation" et "Livraison", nous pouvons l'effectuer pour les autres variables. On exclut les variables "Saisonnalité" et "Transport par avion", car pour ces deux variables, une modalité pèse pour 99 % des produits. Ensuite, nous enlevons la variable "Sous groupe aliment", elle est redondante avec le groupe d'aliments. De plus, elle comporte 55 variables ce qui est très grand, ça nous forcera à construire des tableaux de contingence très grands, et nous aurons encore des valeurs théoriques inférieures à 5.
+
+Nous fixons les mêmes hypothèses que précédemment, et le même risque $\alpha$ [(**Annexe 22**)](#A22). Comme précédemment, nous retrouvons des valeurs théoriques inférieures à 5 [(**Annexe 23**)](#A23). En utilisant, la même méthode, nous pouvons dire que toutes les variables qualitatives testées ont un lien entre elles [(**Annexe 24**)](#A24).
+
+## Croisement des variables quantitatives et qualitatives.
+
+Dans cette dernière partie de l'analyse bivariée, nous allons croiser les variables qualitatives et quantitatives. Avant de parler de lien entre les variables, certaines questions plus simples peuvent se poser.
+
+### Pollution des produits par groupe d'aliments :
+
+Quel groupe d'aliments pollue le plus en moyenne ? Le "Score EF" est intéressant à regarder dans cette situation, il permet de comparer les groupes d'aliments entre eux.
+
+```{r Moyenne score EF par groupe, echo=FALSE}
+df %>% 
+  group_by(`Groupe aliment`) %>%
+  summarise(Score_EF = mean(`Score EF`))%>%
+  kable("latex", booktabs = T, caption = "Moyenne des scores EF par groupe d'aliments") %>%
+  kable_styling(latex_options = c("striped", "HOLD_position", "center"))
+```
+
+Le groupe "viande, œufs, poisson" est le groupe qui pollue le plus avec un score EF en moyenne de 1.78 mPt/kg de produit et le groupe boisson est le groupe polluant le moins en moyenne.
+
+Il peut être intéressant de regarder les diagrammes en boîte par groupe d'aliments. Cela permettra de mieux voir la dispersion de nos variables.
+
+```{r Graph score EF par groupe, echo=FALSE, fig.align='center', out.width="90%"}
+ggplot(df, aes(x = `Groupe aliment`, y = `Score EF`)) +
+  geom_boxplot() + 
+  coord_flip()+ 
+  geom_boxplot(fill="gray")+ 
+  ggtitle("Boxplots des modalités de la variable \n\"Groupe aliment\" selon le score EF")
+```
+
+Il semble que globalement, le score EF soit plus grand quand le produit appartient à la modalité "viandes, œufs, poisson". Il est possible qu'il existe une corrélation entre la variable "Groupe aliment" et "Score EF".
+
+### Corrélation entre les variables "Groupe aliment" et "Score EF".
+
+Le rapport de corrélation $\eta^2$ calcule la corrélation entre une variable qualitative et une variable quantitative. C'est-à-dire, nous allons comparer la variation totale de la variable quantitative, à la variation de cette variable pour chaque modalité.
+
+Calculons $\eta^2$ pour la variable "Groupe aliment" et "Score EF" avec la formule : $$
+\eta^2 = \frac{\sum_{k=1}^{p} n_k (\overline{x}_k - \overline{x})^2}{\sum_{i=1}^{n} (x_i - \overline{x})^2}
+$$
+
+Où $x_i$ la valeur du produit $i$, $p$ le nombre de modalités, $\overline{x}_k$ la moyenne du groupe k, $n_k$ le nombre d'individus appartenant au groupe k et $\overline{x}$ la moyenne globale.
+
+Si $\eta^2 = 0$ alors il n'y a pas de lien entre les variables. Si $\eta^2 = 1$ alors il y a un lien fort entre les variables.
+
+```{r Corrélation groupes/Score EF, echo = FALSE, results='asis'}
+moyenne_sef <- mean(df$`Score EF`)
+tbl_inter <-  df %>% 
+  group_by(`Groupe aliment`) %>%
+  summarise(Score_EF = mean(`Score EF`), n = n())
+
+ecart_inter <- sum(tbl_inter$n*(tbl_inter$Score_EF - moyenne_sef)^2)
+ecart_intra <- sum((df$`Score EF` - moyenne_sef)^2)
+
+eta2 <- ecart_inter/ecart_intra
+cat("La corrélation est de ", eta2,".", sep = "")
+```
+
+On ne peut pas dire qu'il existe une corrélation forte entre les deux variables, mais elle n'est pas inexistante.
+
+### Matrice des corrélations.
+
+Calculons les coefficients de corrélation entre les variables qualitatives et quantitatives.( [**Annexe 25**](#A25))
+
+```{r Graph eta², echo=FALSE, fig.align='center'}
+matrice_eta2 <- matrix(NA,length(quali),length(quanti))
+rownames(matrice_eta2) <- names(quali)
+colnames(matrice_eta2) <- names(quanti)
+
+for(ii in seq(nrow(matrice_eta2))){
+  for(jj in seq(ncol(matrice_eta2))){
+    matrice_eta2[ii, jj]<-eta2(df[, colnames(matrice_eta2)[jj]],
+                         df[, rownames(matrice_eta2)[ii]])
+  }
+}
+
+PlotCorr(matrice_eta2,
+         border = NA,
+         cols = colorRampPalette(c("white", "steelblue"), space = "rgb")(20),
+         breaks = seq(0, 1, length=21),
+         cex.lab = par("cex.lab"), cex = 0.55*par("cex"),
+         args.colorlegend = list(labels = sprintf("%.1f", seq(0, 1, length = 11)), frame = TRUE),
+         mar = c(3,8,10,8))
+title(main = "Tableau des corrélations entre \nles variables quantitatives et qualitatives")
+```
+
+Il est normal, que les variables qualitatives "Saisonnalité" et "Transport par avion", aient peu de corrélation avec les variables de pollutions, elles ont toutes deux une modalité cumulant 99.9 % des produits. Les variables "Livraison", "Matériau emballage" et "Préparation" ont des corrélations assez faibles avec les variables de pollutions. Les variables "Appauv. ozone" et "Epuis. énerg." ne sont corrélées avec aucune variable qualitative. Les variables "Écotoxi. aqua ed" et "Sous groupe aliment" ont le taux de corrélation le plus élevé : $\eta^2 = 0.63$.
+
+Globalement, les corrélations semblent faibles, sauf pour la variable "Sous groupe aliment" et certaines variables de pollutions.
+
+## Conclusion de l'analyse bivariée.
+
+Nous avons mis en avant dans la première partie de l'analyse bivariée les relations des variables quantitatives entre elles. Certaines variables sont fortement liées, d'autres ont plusieurs liens linéaires et certaines variables ne sont liées à aucune autre variable.
+
+En particulier, nous avons voulu souligner le lien entre la variable "Score EF" et les autres variables. Nous savions qu'une formule était utilisée pour le calcul du "Score EF" et nous voulions la retrouver. Cependant, nous sommes tombés sur une erreur sur les "Score EF". Il semble que les scores EF soient légèrement différents que ceux donnés.
+
+Ensuite, nous avons essayé de mettre en évidence les liens entre les variables qualitatives. Nous avons pu constater que toutes les variables qualitatives sont liées. Par exemple, le type de transport dépend du groupe d'aliments.
+
+Enfin, nous avons croisé les variables qualitatives et quantitatives. Nous avons essayé de savoir s'il existait un lien entre les variables qualitatives et quantitatives.
+
+\newpage
+
+# Analyse en composantes principales.
+
+L'objectif de l'ACP (Analyse en Composantes Principales) est de décrire nos données par des graphes et de les synthétiser. Pour cela, nous allons étudier les individus et les variables de notre jeu de données.
+
+## Choix des variables.
+
+La variable "Score EF", nous l'avons vu, résume nos variables selon un score, elle est redondante avec nos autres variables. Les 16 autres variables de pollutions sont nécessaires pour notre ACP. Pour les variables supplémentaires, nous choisissons de garder les variables : "Groupe aliment" et "Sous groupe aliment". Il peut être intéressant de regarder à la fin de notre analyse le graphique des individus selon des variables qualitatives.
+
+```{r Selection des variables, echo=FALSE}
+# On sélectionne les variables quantitatives
+qvar.pca <- quanti[,c(1:16)]
+# On rajoute les variables qualitatives que nous visualiserons plus tard.
+qvar.pca <- cbind(qvar.pca, quali)
+colnames(qvar.pca)[c(17:23)]  <- colnames(quali) 
+```
+
+## Valeurs propres et choix du nombre d'axes.
+
+Le package FactoMineR est utilisé pour effectuer l'ACP, on ajoute les variables qualitatives et le paramètre "scale.unit" pour normaliser nos données, les données sont à des échelles différentes. [(**Annexe 26**)](#A26)
+
+```{r ACP, echo=FALSE}
+res.pca <- PCA(qvar.pca,
+               quali.sup = c(17:23),
+               scale.unit = T,
+               graph = FALSE)
+```
+
+La première composante porte énormément d'informations. Comparons les différentes techniques pour décider du choix d'axes, mais à priori une analyse sur 2 dimensions serait meilleure :
+
+-   Le critère de Kaiser suggère d'interpréter les dimensions avec une inertie supérieure à 1, en regardant les valeurs propres. Ici, nous avons les 3 premières composantes qui sont supérieur à 1.
+
+-   La règle du coude, quant à elle, suggère de trouver une cassure dans l'éboulis des valeurs propres. Ici, nous avons une cassure entre la 2ème et la 3ème composante. Cette méthode nous suggère de prendre les 2 premières composantes.
+
+Nos deux règles se contredisent, l'une suggère de prendre les 3 premières composantes et l'autre les 2 premières composantes. Pour trancher regardons le pourcentage cumulé de nos composantes.
+
+```{r Hitogramme composantes principales, echo=FALSE, out.width="70%", fig.align='center'}
+fviz_eig(res.pca, addlabels = TRUE, ylim = c(0, 70))
+```
+
+Avec 2 axes, nous retenons 73 % de l'information, ce qui est élevé en comparaison du nombre de variables, c'est résumer 73 % du jeu de données en dimension 16. Limitons-nous à 2 axes, à la fois parce que nous résumons beaucoup d'informations et pour ne pas complexifier l'interprétation de nos axes.
+
+## Analyse des individus.
+
+En croisant les informations de contribution et de qualité de projection [(**Annexe 27**)](#A27) il semble qu'un individu contribue énormément à la formation de l'axe 2, mais à une qualité de représentation assez faible sur les dimensions 1 et 2. La "Pêche, sèche" à la plus forte contribution et a pourtant un indice de non-déformation de 0.07 sur l'axe 1 et de 0.31 sur l'axe 2. La qualité de représentation de cet individu n'est pas très grande en comparaison des autres observations. Nous conservons ce produit, car sa contribution n'est pas conséquente pour notre analyse. Il faudra faire preuve de prudence s'il l'on souhaite analyser cet individu en particulier sur nos deux axes.
+
+La projection de nos observations sur nos 2 premiers axes donne quelques unités statistiques excentrées par rapport au reste des produits.
+
+```{r Graphe des individues 1, echo=FALSE, warning=FALSE, out.width="70%", fig.align='center'}
+# Graphe des individus
+plot.PCA(res.pca,
+         repel = TRUE,
+         select = "contrib 30",
+         invisible = "quali")
+```
+
+Il est intéressant de regarder quels individus s'opposent sur chaque axe pour développer de premières hypothèses quant à l'interprétation de nos dimensions. [(**Annexe 28**](#A28) et [**annexe 29**](#A29))
+
+Sur l'axe 1, les premiers produits sont des crustacés et des produits d'élevage d'animaux, de la viande d'agneau (côtelette, cote filet, gigot, selle, ...) sous plusieurs formes (grillé, braisé, rôti, ...). Donc des produits qui se ressemblent énormément au niveau de leur composition. À l'opposé, nous avons des produits buvables, comme du thé, de la soupe, et de l'eau.
+
+Sur l'axe 2, les produits avec les plus grandes coordonnées ont la particularité d'être séchés ou déshydratés, à l'exception de "Crabe ou Tourteau, bouilli/cuit à l'eau" et "Homard, bouilli/cuit à l'eau". À l'opposé de cet axe, nous trouvons beaucoup de produit vus sur l'axe 1, des produits composés d'agneau et du chevreau.
+
+On retrouve en coordonnées négatives sur l'axe 2, les produits avec des coordonnées positives sur l'axe 1.
+
+Enfin, si l'on regarde le graphe des individus selon les groupes d'aliments, il semble effectivement que l'on retrouve principalement des produits issus du groupe "viandes, œufs, poisson" sur l'extrémité droite de l'axe 1 et quelques produits de la catégories "fruits, légumes légumineuses et oléagineux" sur l'axe 2. [(**Annexe 30**)](#A30)
+
+## Analyse des variables.
+
+Pour l'interprétation des axes selon les variables, on projette les variables dans le cercle des corrélations.
+
+```{r Cercle des correlations, echo=FALSE, warning=FALSE, out.width="70%", fig.align='center'}
+fviz_pca_var(res.pca,
+             repel = TRUE)
+```
+
+Sur le graphique, nous pouvons voir que : les flèches de certaines variables s'éloignent de l'extrémité du cercle des corrélations pour ces deux axes. Quand une variable est bien projetée, pour les axes considérés, la flèche est proche du cercle et quand la flèche est proche du centre du cercle, la variable est mal projetée.
+
+La variable "Appauv. ozone" est très mal représentée dans ce plan. On retrouve, d'autres variables un peu mieux représentées, mais toujours distantes du cercle, comme les variables "Epuis. eau", "Forma. photo. ozone" et "Eutro. ed". On peut corroborer ça avec des chiffres. L'indice de non-déformation de la variable "Appauv. ozone" est de 0.003 sur le plan, autrement dit extrêmement faible.
+
+L'autre information intéressante à regarder est la corrélation de chaque variable avec les dimensions du plan. Sur le graphique, plus une flèche est proche d'un axe, plus elle est corrélée avec cet axe. La variable la plus corrélée avec l'axe 1 est "Eff. cancer" (si l'on regarde les chiffres, le coefficient de corrélation est de 0.96). Mais on retrouve, pour l'axe 1 les variables de pollutions ayant un impact direct, le climat ("Changement climatique"), la biodiversité ("Acid. terre./eaux d.", "Particules", "Eutro. ed", "Eutro. marine", "Eutro. terre", "Écotoxi. aqua ed", "Uti. sol") et la santé environnementale ("Forma. photo. ozone", "Eff. non cancer","Eff. cancer.").
+
+Les variables les plus liées à l'axe 2 sont les variables "Rayo. ionisants" et "Épuis. énerg.". On constate qu'elles aussi sont proches du cercle des corrélations. La variable "Rayo. ionisants" forme presque un angle droit avec les variables corrélées à l'axe 1.
+
+(En [**annexe 31**](#A31) on retrouve les informations de qualité et de corrélation des variables sur ce plan)
+
+## Interprétation des axes.
+
+### Axe 1.
+
+Notre ACP, oppose, sur l'axe 1, d'une part les produits affectant principalement le climat, la biodiversité et la santé environnementale, et d'autre part les produits n'ayant pas d'impacts sur ces trois catégories de pollutions. Les produits les plus à droite augmentent ce type de pollution. Nous pouvons remarquer, aussi, l'opposition qu'il semble exister entre les produits issus de l'élevage animalier et l'agriculture. Pour être plus précis, il semble y avoir une opposition entre la production de viande, issue de l'élevage et les légumes et les boissons.
+
+### Axe 2.
+
+Nous trouvons sur l'axe 2 des produits liés aux "Rayo. ionisants" et à "Épuis. énerg.", ces deux variables mesurent en particulier l'utilisation des énergies électriques produites par l'uranium et de l'utilisation d'énergie non-renouvelable. Il semble que certaines catégories de produits soient liées à l'axe 2. La deuxième dimension semble opposer des produits marins ("algues" et "mollusques et crustacés cuits") à des produits provenant de l'élevage animalier.
+
+\newpage
+
+# Classification.
+
+## Pré-traitement.
+
+Regardons de nouveau les composantes de l'ACP, mais cette fois, il faut essayer d'aller chercher un maximum d'informations. Pour cela, regardons le tableau des valeurs propres et le diagramme des valeurs propres pour déterminer le nombre de composantes. Il faut, au minimum 5 composantes, pour atteindre 90 % de l'information. Sur le diagramme des valeurs propres, nous constatons un coude entre la composante 6 et 7. Finalement, nous retenons 6 composantes pour la suite de notre classification. ([**Annexe 26**](#A26) : Valeurs propres ACP.)
+
+```{r ACP 6 ncp, echo=FALSE}
+qvar.pca <- qvar.pca[,-c(24,25)]
+res.pca <- PCA(qvar.pca,
+               quali.sup = c(17:23),
+               scale.unit = TRUE,
+               graph = FALSE,
+               ncp = 6)
+```
+
+## Méthode Mixte.
+
+Nous souhaitons donc utiliser une méthode pour classer nos unités statistiques dans des groupes. Pour cela, nous allons effectuer dans un premier temps, une CAH (classification ascendante hiérarchique) sur les partitions obtenues et enfin une consolidation des classes obtenue par k-means.
+
+```{r Histogramme hauteur de fusion, echo=FALSE, out.width="80%", fig.align='center'}
+ncp <- 6
+D <- dist(res.pca$ind$coord[,1:ncp])#distance euclidienne entre observations
+res.hclust  <-  hclust(D,method = "ward.D2")#CAH par méthode de Ward
+
+barplot(sort(res.hclust$height,decreasing = TRUE)[1:15],
+        names.arg = 1:15,
+        xlab = "index",
+        ylab = "hauteur de fusion")
+```
+
+On constate un coude lorsque l'on passe de 2 à 3 classes. Le gain d'inertie intra-classe est élevé pour passer d'une partition de 2 à 3 classes. Ce graphique suggère de conserver 3 classes, mais il peut être intéressant, en fonction de notre analyse, de rajouter des classes par la suite.
+
+```{r K-means et consolidation, echo=FALSE, results='asis'}
+#kmeans
+nbclasse <- 3
+partition <-cutree(res.hclust, k = nbclasse)
+
+#Consolidation
+
+centres.gravite <- by(res.pca$ind$coord[,1:ncp],
+                      INDICES = partition,
+                      FUN = colMeans) 
+
+centres.gravite <- do.call(rbind, centres.gravite)
+#donne un objet de type "matrix", nécessaire pour pouvoir utiliser ces centres comme des valeurs initiales pour la fonction kmeans
+
+res.kmeans <- kmeans(res.pca$ind$coord[,1:ncp],
+                      centers = centres.gravite)
+
+part.finale <- as.factor(res.kmeans$cluster)
+qvar.pca$Classe1 <- part.finale
+
+freq(qvar.pca$Classe1) %>%
+  kable("latex", booktabs = T, caption = "Répartition des produits par classe", row.names = T) %>%
+  kable_styling(latex_options = c("striped", "HOLD_position", "center"))
+```
+
+## Analyse.
+
+Pour l'analyse de nos classes, nous utiliserons en plus de la fonction "catdes" la projection de nos individus sur les axes de notre ACP selon la classe.
+
+```{r Graphique des individus selon les classes 1, echo=FALSE, out.width="80%", fig.align='center'}
+res.pca<-PCA(qvar.pca,
+             quali.sup = c(17:24),
+             graph = FALSE)
+
+fviz_pca_ind(res.pca,
+             choix = "ind",
+             invisible = "quali",
+             label = "none",
+             habillage = "Classe1")
+```
+
+Nous retrouvons uniquement 6 classes, les 2 autres classes sont composées uniquement d'"individus supplémentaires".
+
+Nous retrouvons le message indiquant que l'approximation du khi-deux est peut-être incorrecte, nous n'évaluerons donc pas nos classes selon les catégories.
+
+Nous nous concentrons donc sur les variables quantitatives pour décrire nos classes.
+
+### Classe 1 : 290 produits.
+
+Si l'on regarde le graphique, la classe 1 semble réunir les produits impactant les 3 catégories de pollution précédemment et les produits utilisant beaucoup de ressources énergétiques. Si l'on regarde cette classe par rapport à l'ensemble de nos produits [(**Annexe 32**)](#A32), notre groupe semble concentrer en particulier les produits avec des valeurs fortes sur les variables "Épuis.énerg.", "Rayo.ionisants" et "Écotoxi. aqua. ed".
+
+```{r Description des classes, echo = FALSE, warning=FALSE}
+catdes.pca = catdes(qvar.pca, num = ncol(qvar.pca))
+```
+
+### Classe 2 : 1344 produits.
+
+La classe 2 réunit la plus grande partie des produits, cette classe regroupe les produits polluants le moins sur toutes les variables. Si l'on regarde les informations de notre groupe en comparaison de l'ensemble du jeu de données [(**Annexe 33**)](#A33), la moyenne de cette classe est inférieure à l'ensemble du jeu de données sur toutes les variables de notre jeu de données.
+
+### Classe 3 : 109 produits.
+
+Il semble que la dernière classe réunit les produits avec une forte pollution impactant la santé environnementale : la biodiversité et le climat. Les informations sur cette classe [(**Annexe 34**)](#A34), montre que ce groupe est très lié aux variables "Eff. cancer", "Eutro..terre", "Changement climatique", ... mais ne consomment que très peu d'énergie électrique. Cependant, deux produits semblent éloignés de ce groupe : les deux produits en haut à droite de notre graphique. Il faut prendre en compte ces deux produits.
+
+Si l'on reproduit notre méthode, mais cette fois-ci avec 4 classes :
+
+```{r K-means et consolidation 2, echo=FALSE, results='asis'}
+#kmeans
+nbclasse <- 4
+partition <-cutree(res.hclust, k = nbclasse)
+
+#Consolidation
+
+centres.gravite <- by(res.pca$ind$coord[,1:ncp-1],
+                      INDICES = partition,
+                      FUN = colMeans) 
+
+centres.gravite <- do.call(rbind, centres.gravite)
+#donne un objet de type "matrix", nécessaire pour pouvoir utiliser ces centres comme des valeurs initiales pour la fonction kmeans
+
+res.kmeans <- kmeans(res.pca$ind$coord[,1:ncp-1],
+                      centers = centres.gravite)
+
+part.finale <- as.factor(res.kmeans$cluster)
+qvar.pca$Classe2 <- part.finale
+
+freq(qvar.pca$Classe2) %>%
+  kable("latex", booktabs = T, caption = "Répartition des produits sur les 4 classes", row.names = T) %>%
+  kable_styling(latex_options = c("striped", "HOLD_position", "center"))
+```
+
+On obtient une 4ème classe avec 2 produits et la classe 1 à augmenter tandis que la classe 2 a diminué.
+
+```{r Graphique des individus selon les classes 2, echo=FALSE, out.width="80%", fig.align='center'}
+res.pca<-PCA(qvar.pca,
+             quali.sup = c(17:25),
+             graph = FALSE)
+
+fviz_pca_ind(res.pca,
+             choix = "ind",
+             invisible = "quali",
+             label = "none",
+             habillage = "Classe2")
+```
+
+Notre analyse ne change pas pour les 3 premières classes, la 4ème classe réunit 2 valeurs extrêmes sur la dimension 1 et 2. Les deux produits polluent fortement et consomment beaucoup d'énergies.
+
+\newpage
+
+# Conclusion.
+
+Nous avons essayé en explorant la base de données de tirer des informations intéressantes de notre base de données :
+
+-   Les variables de pollutions de notre jeu de données ne suivent pas de lois statistiques particulières.
+
+-   Certaines variables qualitatives ont des modalités concentrant tous les produits.
+
+-   Le croisement de certaines variables qualitatives donne plusieurs liens linéaires.
+
+-   Grâce à une régression linéaire multiple, nous avons trouvé des erreurs dans la variable "Score EF". Il semble que le score EF n'ait pas été recalculé après les avoir synthétisés.
+
+-   Nous avons réussi à montrer que toutes les variables qualitatives sont en lien les unes avec les autres.
+
+-   Le groupe de produits provenant de l'élevage est le groupe qui pollue le plus selon le score EF.
+
+-   La variable "Sous groupe aliment" est la variable la plus corrélée aux variables de pollutions.
+
+-   En effectuant une ACP, nous avons essayé de résumer les variables de pollutions sur 2 axes :
+
+    -   Le premier axe correspond à la pollution des produits sur 3 catégories de pollution, le climat, la biodiversité et la santé environnementale.
+
+    -   Le second axe correspond à la consommation énergétique d'un produit.
+
+-   Enfin, avec la classification, nous avons mis en évidence 3 groupes de produits selon les variables de pollutions.
+
+Cette analyse descriptive de notre jeu de données donne une idée générale de comment se répartissent nos données selon les variables de pollution. Cependant, il faut rappeler que ce jeu de données se base sur de nombreuses hypothèses et approximations. Nous nous sommes concentrés sur la synthèse d'un jeu de données plus vaste qui détaille les étapes du cycle de la vie. La base de données donne un ordre d'idée sur les catégories de produits polluant le plus. De plus, elle donne un ordre d'idée sur les types de pollutions associées aux produits.
+
+Bien que cette méthode s'appuie sur des hypothèses et approximations, elle permettra sans doute bientôt de nous aider dans nos achats. De plus, la base de données AGRIBALYSE a été construite selon la base de données CIQUAL. Cette base de données donne les valeurs nutritionnelles d'un produit. La santé environnementale est indissociable de la santé physique. Mais est-il possible de mettre en relation les enjeux environnementaux et nutritionnels pour toucher la sensibilité des consommateurs ?
+
+\newpage
+
+# Appendice : préparation des données. {#Appendice}
+
+Nous préparons nos données pour l'analyse. À la fin du fichier des lignes ont été ajouté (par erreur ?) avec uniquement des virgules. Nous les avons supprimées manuellement pour plus de simplicité. Nous préparons les données statistiques en deux temps. D'abord les unités statistiques, ensuite les variables.
+
+## Unités statistiques. {#AppUs}
+
+Notre jeu de données a une quantité conséquente d'unité statistique, nous souhaitons filtrer les unités statistiques pour plusieurs raisons :
+
+-   Renommons les lignes de notre jeu de données, et supprimons la colonne correspondante :
+
+\rule{1\linewidth}{0.5pt}
+
+```{r Nom des lignes, eval=FALSE}
+rownames(df) <- df$Nom.du.Produit.en.Français
+df <- df[,-5]
+```
+
+\rule{1\linewidth}{0.5pt}
+
+-   La Commission européenne recommande d'utiliser avec prudence les produits avec une note "DQR" supérieure à 3. Par précautions, nous les enlevons, la qualité des mesures étant moins bonne :
+
+\rule{1\linewidth}{0.5pt}
+
+```{r Note DQR, eval=FALSE}
+df <- df[df$DQR < 3,]
+```
+
+\rule{1\linewidth}{0.5pt}
+
+-   Supprimons les doublons.
+
+\rule{1\linewidth}{0.5pt}
+
+```{r Doublons, eval=FALSE}
+df <- df[!duplicated(df),]
+```
+
+\rule{1\linewidth}{0.5pt}
+
+Après avoir exécuté nos filtres, la base de données ne contient plus que 28 variables et 1766 lignes.
+
+## Variables.
+
+Nous souhaitons utiliser la base de données, mais nous constatons plusieurs problèmes :
+
+-   « Code CIQUAL » et « Code AGB » : ces codes sont uniques, mais nous avons déjà le numéro de ligne. Les codes sont associés à la base de données CIQUAL, mais nous ne l'utiliserons pas.
+
+-   « LCI Name », le nom du produit en anglais, fait doublon avec le « Nom du Produit en français ».
+
+-   Les colonnes ne sont pas dans un ordre qui nous convient.
+
+-   Les variables "Sous groupe aliment", "Saisonnalité", "Transport par avion", "Livraison", "Matériau emballage" et "Préparation" sont de type "chr" quand elles devraient être de type "factor"
+
+Nous faisons donc un certain nombre de modifications pour simplifier notre dataframe :
+
+\rule{1\linewidth}{0.5pt}
+
+```{r Mise en forme, eval=FALSE}
+# Nous supprimons les colonnes inutiles
+df <- df[,-c(1,2,5)]
+
+# On trie les colonnes
+df <- df[,c(1:7,10:25,9,8)]
+
+# On modifie le nom des colonnes.
+colnames(df)<-c("Groupe aliment",
+                "Sous groupe aliment",
+                "Saisonnalité",
+                "Transport par avion",
+                "Livraison",
+                "Matériau emballage",
+                "Préparation",
+                "Changement climatique",
+                "Appauv. ozone",
+                "Rayo. ionisants",
+                "Forma. photo. ozone",
+                "Particules",
+                "Eff. non cancer.",
+                "Eff. cancer.",
+                "Acid. terre./eaux d.",
+                "Eutro. ed",
+                "Eutro. marine",
+                "Eutro. terre",
+                "Écotoxi. aqua ed",
+                "Uti. sol",
+                "Épuis. eau",
+                "Épuis. énerg.",
+                "Épuis. miné.",
+                "Score EF",
+                "DQR")
+# On remplace en supprimant les espaces
+df$Préparation[df$Préparation == "Pas de préparation "] <- "Pas de préparation"
+df$Préparation[df$Préparation == "Four "] <- "Four"
+df$Préparation[df$Préparation == "Micro-onde "] <- "Micro-onde"
+
+# On modifie le type des variables en factor
+df$`Groupe aliment` <- as.factor(df$`Groupe aliment`)
+df$`Sous groupe aliment` <- as.factor(df$`Sous groupe aliment`)
+df$Saisonnalité <- as.factor(df$Saisonnalité)
+df$`Transport par avion` <- as.factor(df$`Transport par avion`)
+df$Livraison <- as.factor(df$Livraison)
+df$`Matériau emballage` <- as.factor(df$`Matériau emballage`)
+df$Préparation <- as.factor(df$Préparation)
+```
+
+```{=tex}
+\rule{1\linewidth}{0.5pt}
+
+\newpage
+```
+# Sources.
+
+## Sitographie. {#Sources}
+
+ADEME. (2022, Novembre 3). *Portail open data de l'ADEME*. Récupéré sur AGRIBALYSE® - Synthèse: <https://data.ademe.fr/datasets/agribalyse-31-synthese>
+
+Agribalyse. (2022, Novembre). *Méthode de l'Analyse du Cycle de Vie*. Récupéré sur Documentation Agribalyse: <https://doc.agribalyse.fr/documentation/methodologie-acv>
+
+Commission européenne. (s.d.). *Données clés sur les consommateurs en 2020.* Récupéré sur <https://ec.europa.eu/info/sites/default/files/120321_key_consumer_data_factsheet_fr.pdf>
+
+Ecobalyse. (s.d.). *Indicateurs d'impacts ACV*. Récupéré sur Ecobalyse: <https://fabrique-numerique.gitbook.io/ecobalyse/alimentaire/impacts-consideres>
+
+European Commission. (2022, Novembre). *Developer Environmental Footprint (EF).* Récupéré sur European Platform on LCA \| EPLCA: <https://eplca.jrc.ec.europa.eu/LCDN/developerEF.xhtml>
+
+Garric, A. (2016, 10 27). La moitie des vertébrés a disparu en quarante ans. *Le Monde*. Récupéré sur <https://www.lemonde.fr/biodiversite/article/2016/10/27/la-moitie-des-vertebres-a-disparu-en-quarante-ans_5020936_1652692.html>
+
+lemakistatheux. (s.d.). *Le test du Chi2 de Pearson*. Récupéré sur <https://lemakistatheux.wordpress.com/:> <https://lemakistatheux.wordpress.com/category/tests-statistique-indices-de-liaison-et-coefficients-de-correlation/le-test-du-chi2-de-pearson/>
+
+Marine Stewarship Council (MSC). (s.d.). *Quelles sont les conséquences de la surpêche ?* . Récupéré sur www.msc.org: <https://www.msc.org/fr/informations-sur-le-msc/consequences-de-la-surpeche>
+
+Mon-Emballage.com. (s.d.). *Guide des emballages alimentaires plastique*. Récupéré sur Mon-Emballage.com: <https://www.mon-emballage.com/content/131-guide-des-emballages-alimentaires-plastique>
+
+Pr Lobry, J. R. (s.d.). *Normalisation d'une variable quantitative : la transformation de Box et Cox.* Récupéré sur pbil.univ-lyon1.fr: <https://pbil.univ-lyon1.fr/R/pdf/tdr29.pdf>
+
+\newpage
+
+# Annexes.
+
+## Annexe 1 : variables qualitatives. {#A1}
+
+| Nom variable               | Type de variable | Description                                                                                                                                                                                                                                                                      |
+|-------------------|-------------------|-----------------------------------|
+| Code AGB                   | Qualitative      | Code du produit                                                                                                                                                                                                                                                                  |
+| Code CIQUAL                | Qualitative      | Autre code du produit                                                                                                                                                                                                                                                            |
+| Groupe d'aliment           | Qualitative      | L'AGRIBALYSE place un produit dans une catégorie alimentaire. Par exemple : fruits, légumineuses et oléagineux.                                                                                                                                                                  |
+| Sous-groupe d'aliment      | Qualitative      | Il s'agit d'une description plus détaillée du produit                                                                                                                                                                                                                            |
+| Nom du Produit en Français | Qualitative      | Nom du produit en Français                                                                                                                                                                                                                                                       |
+| LCI Name                   | Qualitative      | Nom du produit en Anglais                                                                                                                                                                                                                                                        |
+| Saisonnalité               | Qualitative      | Pour les fruits et légumes par exemple, la saisonnalité indique si le produit est « de saison », « hors saison ». S'il est composé de plusieurs ingrédients ou si on ne peut pas trouver de saisonnalité pour le produit, le produit est classé comme « mix de consommation FR » |
+| Transport par avion        | Qualitative      | Si un produit est transporté en avion, il est noté 1 sinon il est noté 0.                                                                                                                                                                                                        |
+| Livraison                  | Qualitative      | Type de livraison effectué pour un produit, si le produit est transporté dans une température ambiante et la distance que le produit parcourt (long, moyen, court) si le produit est « congelé » ou « glacé ».                                                                   |
+| Matériau d'emballage       | Qualitative      | On retrouve le type d'emballage du produit.                                                                                                                                                                                                                                      |
+| Préparation                | Qualitative      | Indique le type de préparation du plat.                                                                                                                                                                                                                                          |
+
+\newpage
+
+## Annexe 2 : variables quantitatives. {#A2}
+
+| Nom variable                                                             | Type de variable      | Description                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
+|-------------------|-------------------|-----------------------------------|
+| DQR - Note de qualité de la donnée                                       | Quantitative continue | Data Quality Ratio (le rapport de qualité des données) : note de qualité allant de 1, très bon, à 5 très mauvaise. Le DQR est associé à chaque produit agricole et alimentaire pour lequel Agribalyse fournit des inventaires de cycle de vie et des indicateurs d'impacts. La Commission européenne recommande de la prudence dans l'utilisation des données avec des DQR supérieurs à 3. Dans la base de données AGRIBALYSE, 67 % des données ont un DQR jugé bon ou très bon (1 à 3) .La note DQR est la moyenne de 4 variables, la TeR : Représentativité technique, la GeR : Représentativité géographique, la TiR : Représentativité temporelle, la P : Incertitude des paramètres. Ces données ne sont pas disponibles dans notre base de données. |
+| Score unique EF                                                          | Quantitative continue | Score indiquant l'impact du produit sur l'environnement, il est exprimé en mpt/kg c'est-à-dire en milli-point par kilo. Plus ce score est élevé plus l'impact environnemental est fort. 1 point correspond à l'impact environnemental moyen d'un citoyen européen sur 1 an.                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
+| Changement climatique                                                    | Quantitative continue | Correspond à la modification du climat, affectant l'écosystème global. Exprimé en kg CO2 eq.(Conversion des quantités des divers gaz émis en la quantité équivalente de dioxyde de carbone ayant le même potentiel de réchauffement planétaire.)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| Appauvrissement de la couche d'ozone                                     | Quantitative continue | La couche d'ozone est située en haute altitude dans l 'atmosphère, elle protège des rayons ultra-violets solaires. Son appauvrissement augmente l'exposition de l'ensemble des êtres vivants à ces radiations négatives (cancérigènes en particulier). Exprimé en kg CFC-11 eq                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| Rayonnements ionisants                                                   | Quantitative continue | Correspond aux effets de la radioactivité. Cet impact correspond aux déchets radioactifs résultants de la production de l'électricité nucléaire. Exprimé en kBq(def) U-235(def) eq. (Kbq U-235 : kilobecquerel d'Uranium 235)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| Formation photochimique d'ozone                                          | Quantitative continue | Correspond à une dégradation de la qualité de l'air, principalement via la formation de brouillard de basse altitude nommé "smog". Il a des conséquences néfastes sur la santé. Exprimé en kg NMVOC (def) eq (NMVOC : Non-methane volatile organic compounds ou composés organiques volatils non-méthaniques)                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| Particules                                                               | Quantitative continue | Les particules fines pénètrent dans les organismes, notamment via les poumons. Elles ont un effet sur la santé humaine. Exprimé en disease inc.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| Effets toxicologiques sur la santé humaine : substances non-cancérogènes | Quantitative continue | Impact sur la santé lié à l'exposition de la population générale aux contaminants chimiques via les pollutions du milieu (air, eau, sol). Ces contaminants émis dans l'environnement sont notamment des pesticides, des métaux lourds ou encore des polluants industriels. L'exposition par ingestion directe d'un aliment contenant des résidus de pesticides n'est pour l'instant pas intégrée dans les calculs d'Analyse du Cycle de Vie. (Exprimé en CTUh)                                                                                                                                                                                                                                                                                            |
+| Effets toxicologiques sur la santé humaine : substances cancérogènes     | Quantitative continue | La définition est la même que " Effets toxicologiques sur la santé humaine : substances non-cancérogènes "                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+| Acidification                                                            | Quantitative continue | Résulte d'émissions chimiques dans l'atmosphère qui se redéposent dans les écosystèmes. Cette problématique est connue en particulier via le phénomène des pluies acides. Exprimé en mol H+ eq.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| Eutrophisation terreste                                                  | Quantitative continue | Comme dans l'eau, l'eutrophisation terrestre correspond à un enrichissement excessif du milieu, en azote en particulier, conduisant à un déséquilibre et un appauvrissement de l'écosystème. Ceci concerne principalement les sols agricoles. Exprimé en mol N eq.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| Eutrophisation eaux douces                                               | Quantitative continue | Correspond à un enrichissement excessif des milieux naturels en nutriments, ce qui conduit à une prolifération et à une asphyxie (zone morte). C'est ce phénomène qui est à l'origine des algues vertes. On peut le retrouver en rivière et dans les lacs également. Exprimé en P eq.                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
+| Eutrophisation marine                                                    | Quantitative continue | Correspond à un enrichissement excessif des milieux naturels en nutriments, ce qui conduit à une prolifération et à une asphyxie (zone morte). C'est ce phénomène qui est à l'origine des algues vertes. Exprimé en N eq. (N : Azote de nitrate)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| Utilisation du sol                                                       | Quantitative continue | Les terres sont une ressource finie, qui se partage entre milieux "naturels" (forêts), productifs (agricultures) et urbains. L'usage des terres et les habitats déterminent dans une large mesure la biodiversité. Cette catégorie reflète donc l'impact d'une activité sur la dégradation des terres, en référence à « l'état naturel ». Exprimé en point.                                                                                                                                                                                                                                                                                                                                                                                               |
+| Écotoxicité pour écosystèmes aquatiques d'eau douce                      | Quantitative continue | Ecotoxicité d'eau douce, Toxicité humaine cancérigène et non cancérigène. Indicateurs de toxicité via la contamination de l'environnement. Ces indicateurs sont encore peu robustes actuellement. Exprimé en CTUe ([CTUe :]{.underline} unité de toxicité des écosystèmes)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+| Épuisement des ressources en eau                                         | Quantitative continue | Correspond à la consommation d'eau et son épuisement dans certaines régions. Cette catégorie tient compte de la rareté (cela a plus d'impact de consommer un litre d'eau au Maroc qu'en Bretagne). Exprimé en m3 world eq.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+| Épuisement des ressources énergétiques                                   | Quantitative continue | Correspond à l'épuisement des ressources énergétiques non-renouvelables : charbon, gaz, pétrole, uranium, etc. Exprimé en MJ/kg de produit                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+| Épuisement des ressources minéraux                                       | Quantitative continue | Correspond à l'épuisement des ressources minérales non-renouvelables : cuivre, potasse, terres rares, sable, etc. Exprimé en Sb eq/kg de produit.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
+
+\newpage
+
+## Annexe 3 : statistiques descriptives. {#A3}
+
+```{r Tableau statistiques descriptives, results="asis", echo = FALSE, out.width="90%"}
+stargazer(quanti, header = F, title = "Statistiques descriptives",
+          summary.stat = c("n","min","p25","median","mean","p75","max","sd"),
+          float.env = "sidewaystable", label = "Statistiques descriptives")
+```
+
+\newpage
+
+## Annexe 4 : box-plots. {#A4}
+
+```{r Box-Plot 3,fig.height = 4,fig.width = 8, echo=FALSE}
+par(mfrow = c(1,2))
+bp_quanti_3 <- mapply(quanti[,-c(1,2,17,18)],
+       FUN = function(xx,name){boxplot(xx, main = paste("Boxplot de", name),id.n = 2, ylab = name)},
+       name = names(quanti[,-c(1,2,17,18)]))
+```
+
+\newpage
+
+## Annexe 5 : histogramme des variables de pollution. {#A5}
+
+```{r Histogramme, fig.height= 4,fig.width=8, echo=FALSE}
+par(mfrow = c(1,2))
+hist_quanti <- lapply(names(quanti[,-c(17,18)]),
+                      function(xx){ var = quanti[,xx]
+                      hist(var,
+                           xlab = xx,
+                           probability = TRUE,
+                           main = paste("Histogramme de", xx))
+                      lines(density(var),
+                            col = "#154360",
+                            lwd = 2)
+                      })
+```
+
+\newpage
+
+## Annexe 6 : histogramme et droite de Henry des transformations logarithmiques. {#A6}
+
+Fonction myplot reprise et modifié du cours du [*Pr Lobry Jean R*](#Sources). (Ajouter lien)
+
+```{r Fonction Plot, include = FALSE}
+myplot <- function(x, mylwd = 3, mycol = rgb(0, 0.5, 0.5), myborder = grey(0.8),
+mycolhist = rgb(0, 1, 1, 0.1), mycolnorm = rgb(0.7, 0.5, 0.7), ...){
+  old.par <- par(no.readonly = TRUE)
+  on.exit(par(old.par))
+  par(mfrow = c(1, 2))
+  hx <- hist(x, plot = FALSE)
+  dx <- density(x)
+  hist(x, freq = FALSE, border = myborder, col = mycolhist, ylim = c(0, max(hx$density, dx$y)),
+       ylab = "Densité", ...)
+  lines(dx, lwd = mylwd, col = mycol)
+  qqnorm(x, main = "Droite de Henry", xlab = "Quantiles théoriques",
+  ylab = "Quantiles observés", las = 1)
+  qqline(x)
+}
+```
+
+```{r myplot 1, fig.height = 3, fig.width = 7, echo = FALSE}
+with(trans_quanti, myplot(`Rayo. ionisants`, main = "Histogramme de \" Rayo. ionisants \".
+Transformation logarithmique.", xlab = "Rayo. ionisants", cex.main= 0.9))
+
+with(trans_quanti, myplot(Particules, main = "Histogramme de \" Particules \".
+Transformation logarithmique.", xlab = "Particules", cex.main= 0.9))
+
+with(trans_quanti, myplot(`Acid. terre./eaux d.`, main = "Histogramme de \" Acid. terre./eaux d. \".
+Transformation logarithmique.", xlab = "Acid. terre./eaux d.", cex.main= 0.9))
+
+with(trans_quanti, myplot(`Épuis. énerg.`, main = "Histogramme de \" Épuis. énerg. \".
+Transformation logarithmique.", xlab = "Épuis. énerg.", cex.main= 0.9))
+```
+
+\newpage
+
+## Annexe 7 : histogramme et droite de Henry des transformations de Box-Cox. {#A7}
+
+```{r myplot 2, fig.height= 4,fig.width=8, echo = FALSE}
+with(trans_quanti, myplot(`Changement climatique`, main = "Histogramme de \" Changement climatique \".
+Transformation de Box-Cox.", xlab = "Changement climatique", cex.main= 0.9))
+
+with(trans_quanti, myplot(`Appauv. ozone`, main = "Histogramme de \" Appauv. ozone \".
+Transformation de Box-Cox.", xlab = "Appauv. ozone", cex.main= 0.9))
+
+with(trans_quanti, myplot(`Forma. photo. ozone`, main = "Histogramme de \" Forma. photo. ozone \".
+Transformation de Box-Cox.", xlab = "Forma. photo. ozone", cex.main= 0.9))
+
+with(trans_quanti, myplot(`Eff. non cancer.`, main = "Histogramme de \" Eff. non cancer. \".
+Transformation de Box-Cox.", xlab = "Eff. non cancer.", cex.main= 0.9))
+
+with(trans_quanti, myplot(`Eff. cancer.`, main = "Histogramme de \" Eff. cancer. \".
+Transformation de Box-Cox.", xlab = "Eff. cancer.", cex.main= 0.9))
+
+with(trans_quanti, myplot(`Eutro. ed`, main = "Histogramme de \" Eutro. ed \".
+Transformation de Box-Cox.", xlab = "Eutro. ed", cex.main= 0.9))
+
+with(trans_quanti, myplot(`Eutro. marine`, main = "Histogramme de \" Eutro. marine \".
+Transformation de Box-Cox.", xlab = "Eutro. marine", cex.main= 0.9))
+
+with(trans_quanti, myplot(`Eutro. terre`, main = "Histogramme de \" Eutro. terre \".
+Transformation de Box-Cox.", xlab = "Eutro. terre", cex.main= 0.9))
+
+with(trans_quanti, myplot(`Écotoxi. aqua ed`, main = "Histogramme de \" Écotoxi. aqua ed \".
+Transformation de Box-Cox.", xlab = "Écotoxi. aqua ed", cex.main= 0.9))
+
+with(trans_quanti, myplot(`Épuis. miné.`, main = "Histogramme de \" Épuis. miné. \".
+Transformation de Box-Cox.", xlab = "Épuis. miné.", cex.main= 0.9))
+```
+
+\newpage
+
+## Annexe 8 : tests de Shapiro-Wilks. {#A8}
+
+**Test sur la variable transformée "Changement climatique" :**
+
+\rule{1\linewidth}{0.5pt}
+
+```{r Test SW 5, echo = FALSE, results="asis"}
+with(trans_quanti, shapiro.test(`Changement climatique`))
+```
+
+\rule{1\linewidth}{0.5pt}
+
+**Test sur la variable transformée "Appauv. ozone" :**
+
+\rule{1\linewidth}{0.5pt}
+
+```{r Test SW 6, echo = FALSE, results="asis"}
+with(trans_quanti, shapiro.test(`Appauv. ozone`))
+```
+
+\rule{1\linewidth}{0.5pt}
+
+**Test sur la variable transformée "Forma. photo. ozone" :**
+
+\rule{1\linewidth}{0.5pt}
+
+```{r Test SW 7, echo = FALSE, results="asis"}
+with(trans_quanti, shapiro.test(`Forma. photo. ozone`))
+```
+
+\rule{1\linewidth}{0.5pt}
+
+**Test sur la variable transformée "Eff. non cancer." :**
+
+\rule{1\linewidth}{0.5pt}
+
+```{r Test SW 8, echo = FALSE, results="asis"}
+with(trans_quanti, shapiro.test(`Eff. non cancer.`))
+```
+
+\rule{1\linewidth}{0.5pt}
+
+**Test sur la variable transformée "Eff. cancer." :**
+
+\rule{1\linewidth}{0.5pt}
+
+```{r Test SW 9, echo = FALSE, results="asis"}
+with(trans_quanti, shapiro.test(`Eff. cancer.`))
+```
+
+\rule{1\linewidth}{0.5pt}
+
+**Test sur la variable transformée "Eutro. ed" :**
+
+\rule{1\linewidth}{0.5pt}
+
+```{r Test SW 10, echo = FALSE, results="asis"}
+with(trans_quanti, shapiro.test(`Eutro. ed`))
+```
+
+\rule{1\linewidth}{0.5pt}
+
+**Test sur la variable transformée "Eutro. marine" :**
+
+\rule{1\linewidth}{0.5pt}
+
+```{r Test SW 11, echo = FALSE, results="asis"}
+with(trans_quanti, shapiro.test(`Eutro. marine`))
+```
+
+\rule{1\linewidth}{0.5pt}
+
+**Test sur la variable transformée "Eutro. terre" :**
+
+\rule{1\linewidth}{0.5pt}
+
+```{r Test SW 12, echo = FALSE, results="asis"}
+with(trans_quanti, shapiro.test(`Eutro. terre`))
+```
+
+\rule{1\linewidth}{0.5pt}
+
+**Test sur la variable transformée "Écotoxi. aqua ed" :**
+
+\rule{1\linewidth}{0.5pt}
+
+```{r Test SW 13, echo = FALSE, results="asis"}
+with(trans_quanti, shapiro.test(`Écotoxi. aqua ed`))
+```
+
+\rule{1\linewidth}{0.5pt}
+
+**Test sur la variable transformée "Épuis. miné." :**
+
+\rule{1\linewidth}{0.5pt}
+
+```{r Test SW 14, echo = FALSE, results="asis"}
+with(trans_quanti, shapiro.test(`Épuis. miné.`))
+```
+
+```{=tex}
+\rule{1\linewidth}{0.5pt}
+\newpage
+```
+## Annexe 9 : nombre de modalités. {#A9}
+
+```{r Nombre de modalités, echo=FALSE, results='hold'}
+str(quali)
+```
+
+\newpage
+
+## Annexe 10 : tableaux des fréquences. {#A10}
+
+Le nombre de modalités étant trop grand pour la variables "Sous groupe aliment" on ne peut pas l'éditer dans un tableau.
+
+```{r Tableau des frequences 1, echo=FALSE}
+tabfreq1 <- lapply(quali, freq)
+
+kable(tabfreq1$`Groupe aliment`, booktabs = T,
+      caption = "Tableau de fréquence de \"Groupe aliment\"") %>%
+  kable_styling(latex_options = c("striped", "HOLD_position", "center"))
+```
+
+```{r Tableau des frequences 2, echo=FALSE}
+kable(tabfreq1$Saisonnalité, booktabs = T,
+      caption = "Tableau des fréquences de \"Saisonnalité\"") %>%
+  kable_styling(latex_options = c("striped", "HOLD_position", "center"))
+```
+
+```{r Tableau des frequences 3, echo=FALSE}
+kable(tabfreq1$`Transport par avion`, booktabs = T,
+      caption = "Tableau des fréquences de \"Transport par avion\"") %>%
+  kable_styling(latex_options = c("striped", "HOLD_position", "center"))
+```
+
+```{r Tableau des frequences 4, echo=FALSE}
+kable(tabfreq1$Livraison, booktabs = T,
+      caption = "Tableau des fréquences de \"Livraison\"") %>%
+  kable_styling(latex_options = c("striped", "HOLD_position", "center"))
+```
+
+```{r Tableau des frequences 5, echo=FALSE}
+kable(tabfreq1$`Matériau emballage`, booktabs = T,
+      caption = "Tableau des fréquences de \"Matériau emballage\"") %>%
+  kable_styling(latex_options = c("striped", "HOLD_position", "center"))
+```
+
+```{r Tableau des frequences 6, echo=FALSE}
+kable(tabfreq1$Préparation, booktabs = T,
+      caption = "Tableau des fréquences de \"Préparation\"") %>%
+  kable_styling(latex_options = c("striped", "HOLD_position", "center"))
+```
+
+\newpage
+
+## Annexe 11 : pollution des modalités rares. {#A11}
+
+```{r Quanti modalités Rares, echo=FALSE, results='asis'}
+quanti[c("Fraise hors saison, crue","Fraise de saison, crue","Tomate hors saison, crue","Tomate de saison, crue"),] %>% 
+  kable( "latex", booktabs = T, caption = "Pollution des modalités rares") %>%
+  kable_styling(latex_options = c("striped", "HOLD_position", "center","scale_down")) %>%
+  landscape()
+
+```
+
+## Annexe 12 : diagramme en barre des variables qualitatives. {#A12}
+
+```{r Diagramme en barre 2, echo=FALSE}
+groupe_aliment <- data.frame(table(quali[,5])) %>% 
+  arrange(desc(Freq))
+ggplot(groupe_aliment, aes(x=fct_reorder(Var1, Freq, .desc = T), y=Freq/sum(Freq))) + 
+  geom_bar(stat = "identity", fill = "#0072B2") +
+  ylab("Pourcentage du nombre de produits") +
+  xlab("Modalités de \"Livraison\"") +
+  ggtitle("Pourcentage du nombre de produits selon les modalités de \"Livraison\"") +
+  scale_y_continuous(labels = scales::percent_format())
+
+groupe_aliment <- data.frame(table(quali[,7])) %>% 
+  arrange(desc(Freq))
+ggplot(groupe_aliment, aes(x=fct_reorder(Var1, Freq), y=Freq/sum(Freq))) + 
+  geom_bar(stat = "identity", width=0.2, fill = "#0072B2") +
+  ylab("Nombre de produits") +
+  xlab("Modalités de \"Préparation\"") +
+  ggtitle("Pourcentage du nombre de produits selon \n les modalités de \"Préparation\"") +
+  scale_y_continuous(labels = scales::percent_format()) +
+  coord_flip()
+```
+
+\newpage
+
+## Annexe 13 : nuages de points des corrélations. {#A13}
+
+```{r Croisement variables, echo=FALSE}
+#pairs(quanti, lower.panel=NULL)
+```
+
+![Nuages de points entre les variables](./Images/Nuages%20de%20points.png)
+
+\newpage
+
+## Annexe 14 : coefficients de corrélation de Spearman. {#A14}
+
+```{r Tableau correlations spearman, fig.height= 8,fig.width=7.75, echo=FALSE}
+corrplot(cor(quanti, method = "spearman"), method = "number", tl.cex = 1, number.cex = 0.6, type = 'upper', title = "Tableau des corrélations de Spearman",mar=c(0,0,2,0),)
+```
+
+\newpage
+
+## Annexe 15 : tableau des variables quantitatives des produits 52 et 656 {#A15}
+
+```{r Paramètres des produits, echo=FALSE}
+df[c(52,656),c(8:25)]%>%
+  kable("latex", booktabs = T, caption = "Table quantitative des produits 52 et 656" ) %>%
+  kable_styling(latex_options = c("striped", "HOLD_position", "center", "scale_down"))%>%
+  landscape()
+```
+
+\newpage
+
+## Annexe 16 : image des coefficients de pondération pour le "Score EF". {#A16}
+
+![Tableau des pondérations [(Agribalyse, 2022)](#Sources)](./Images/Ponderations.png)
+
+\newpage
+
+## Annexe 17 : image des coefficient de Normalisation "Score EF". {#A17}
+
+![Tableau des coefficients de normalisation pour la version 3.0 et 3.1 [(European Commission, 2022)](#Sources)](./Images/Normalisation.png)
+
+\newpage
+
+## Annexe 18 : tableau des coefficients. {#A18}
+
+```{r Table des coefficients, echo=FALSE}
+coeffs <- c()
+for(i in 1:16){
+  coeffs=c(coeffs, (1 / (facteur$nf_3.1[i]/1000)) * facteur$w_factor_3.1[i])
+}
+
+tab_coeffs <- cbind(coeffs, coeff_rlm = rlm1$coefficients[-1])
+tab_coeffs %>% 
+  kable( "latex", booktabs = T, caption = "Table des coefficients \"à la main\" et de régression") %>%
+  kable_styling(latex_options = c("striped", "HOLD_position", "center"))
+```
+
+\newpage
+
+## Annexe 19 : table des variables quantitatives des produits 51 et 52. {#A19}
+
+```{r Produits 51 et 52, echo=FALSE}
+quanti[c(51,52),]%>%
+  kable("latex", booktabs = T) %>%
+  kable_styling(latex_options = c("striped", "HOLD_position", "center", "scale_down")) %>%
+  landscape()
+```
+
+\newpage
+
+## Annexe 20 : tableau de contingence. {#A20}
+
+```{r Tableau de contingence, echo = FALSE}
+kable(tbl,format = "latex", booktabs = TRUE, caption = "Tableau de contingence entre les variables \"Préparation\" et \"Livraison\".") %>%
+  kable_styling(latex_options = c("striped", "HOLD_position", "center", "scale_down"))
+```
+
+\newpage
+
+## Annexe 21 : tableaux des valeurs théoriques pour le test du khi-deux. {#A21}
+
+```{r Tableau des valeurs théoriques 1, echo=FALSE}
+round(chisq.test(tbl)$expected, 2) %>% 
+  kable( "latex", booktabs = T, caption = "Table théorique du khi-deux entre les variables \"Préparation\" et \"Livraison\".") %>%
+  kable_styling(latex_options = c("striped", "HOLD_position", "center", "scale_down"))
+```
+
+\newpage
+
+## Annexe 22 : test du khi-deux. {#A22}
+
+**Test d'indépendance du khi-deux entre les variables "Groupe aliment" et "Livraison":**
+
+\rule{1\linewidth}{0.5pt}
+
+```{r Test du khi-deux 2, results='asis', echo=FALSE}
+with(quali, chisq.test(table(`Groupe aliment`, Livraison)))
+```
+
+\rule{1\linewidth}{0.5pt}
+
+**Test d'indépendance du khi-deux entre les variables "Groupe aliment" et "Matériau emballage":**
+
+\rule{1\linewidth}{0.5pt}
+
+```{r Test du khi-deux 3, results='asis', echo=FALSE}
+with(quali, chisq.test(table(`Groupe aliment`, `Matériau emballage`)))
+```
+
+\rule{1\linewidth}{0.5pt}
+
+**Test d'indépendance du khi-deux entre les variables "Groupe aliment" et "Préparation":**
+
+\rule{1\linewidth}{0.5pt}
+
+```{r Test du khi-deux 4, results='asis', echo=FALSE}
+with(quali, chisq.test(table(`Groupe aliment`, Préparation)))
+```
+
+\rule{1\linewidth}{0.5pt}
+
+**Test d'indépendance du khi-deux entre les variables "Livraison" et "Matériau emballage":**
+
+\rule{1\linewidth}{0.5pt}
+
+```{r Test du khi-deux 5, results='asis', echo=FALSE}
+with(quali, chisq.test(table(Livraison, `Matériau emballage`)))
+```
+
+\rule{1\linewidth}{0.5pt}
+
+**Test d'indépendance du khi-deux entre les variables "Matériau emballage" et "Préparation":**
+
+\rule{1\linewidth}{0.5pt}
+
+```{r Test du khi-deux 6, results='asis', echo=FALSE}
+with(quali, chisq.test(table(`Matériau emballage`, Préparation)))
+```
+
+```{=tex}
+\rule{1\linewidth}{0.5pt}
+\newpage
+```
+## Annexe 23 : tableaux des valeurs théoriques du test du khi-deux. {#A23}
+
+```{r Tableau des valeurs théoriques 2, echo = FALSE, results='asis'}
+round(chisq.test(table(quali$`Groupe aliment`, quali$Livraison))$expected,2) %>% 
+  kable( "latex", booktabs = T, caption = "Table théorique du khi-deux entre les variables \"Groupe aliment\" et \"Livraison\".") %>%
+  kable_styling(latex_options = c("striped", "HOLD_position", "center", "scale_down"))
+```
+
+```{r Tableau des valeurs théoriques 3, echo = FALSE, results='asis'}
+round(chisq.test(table(quali$`Groupe aliment`, quali$`Matériau emballage`))$expected,2) %>% 
+  kable( "latex", booktabs = T, caption = "Table théorique du khi-deux entre les variables \"Groupe aliment\" et \"Matériau emballage\".") %>%
+  kable_styling(latex_options = c("striped", "HOLD_position", "center", "scale_down"))
+```
+
+```{r Tableau des valeurs théoriques 4, echo = FALSE, results='asis'}
+round(chisq.test(table(quali$`Groupe aliment`, quali$Préparation))$expected,2) %>% 
+  kable( "latex", booktabs = T, caption = "Table théorique du khi-deux entre les variables \"Groupe aliment\" et \"Préparation\".") %>%
+  kable_styling(latex_options = c("striped", "HOLD_position", "center", "scale_down"))
+```
+
+```{r Tableau des valeurs théoriques 5, echo = FALSE, results='asis'}
+round(chisq.test(table(quali$Livraison, quali$`Matériau emballage`))$expected,2) %>% 
+  kable( "latex", booktabs = T, caption = "Table théorique du khi-deux entre les variables \"Livraison\" et \"Matériau emballage\".") %>%
+  kable_styling(latex_options = c("striped", "HOLD_position", "center", "scale_down"))
+```
+
+```{r Tableau des valeurs théoriques 6, echo = FALSE, results='asis'}
+round(chisq.test(table(quali$`Matériau emballage`, quali$Préparation))$expected,2) %>% 
+  kable( "latex", booktabs = T, caption = "Table théorique du khi-deux entre les variables \"Matériau emballage\" et \"Préparation\".") %>%
+  kable_styling(latex_options = c("striped", "HOLD_position", "center", "scale_down"))
+```
+
+\newpage
+
+## Annexe 24 : test du khi-deux avec "simulate p-value". {#A24}
+
+**Test d'indépendance du khi-deux avec "simulate.p.value" entre les variables "Groupe aliment" et "Livraison":**
+
+\rule{1\linewidth}{0.5pt}
+
+```{r Test du khi-deux simulate p-value 2, echo = FALSE, results='asis'}
+with(quali, chisq.test(table(`Groupe aliment`, Livraison), simulate.p.value = T))
+```
+
+\rule{1\linewidth}{0.5pt}
+
+**Test d'indépendance du khi-deux avec "simulate.p.value" entre les variables "Groupe aliment" et "Matériau emballage":**
+
+\rule{1\linewidth}{0.5pt}
+
+```{r Test du khi-deux simulate p-value 3, echo = FALSE, results='asis'}
+with(quali, chisq.test(table(`Groupe aliment`, `Matériau emballage`), simulate.p.value = T))
+```
+
+\rule{1\linewidth}{0.5pt}
+
+**Test d'indépendance du khi-deux avec "simulate.p.value" entre les variables "Groupe aliment" et "Préparation":**
+
+\rule{1\linewidth}{0.5pt}
+
+```{r Test du khi-deux simulate p-value 4, echo = FALSE, results='asis'}
+with(quali, chisq.test(table(`Groupe aliment`, Préparation), simulate.p.value = T))
+```
+
+\rule{1\linewidth}{0.5pt}
+
+**Test d'indépendance du khi-deux avec "simulate.p.value" entre les variables "Livraison" et "Matériau emballage":**
+
+\rule{1\linewidth}{0.5pt}
+
+```{r Test du khi-deux simulate p-value 5, echo = FALSE, results='asis'}
+with(quali, chisq.test(table(Livraison, `Matériau emballage`), simulate.p.value = T))
+```
+
+\rule{1\linewidth}{0.5pt}
+
+**Test d'indépendance du khi-deux avec "simulate.p.value" entre les variables "Matériau emballage" et "Préparation":**
+
+\rule{1\linewidth}{0.5pt}
+
+```{r Test du khi-deux simulate p-value 6, echo = FALSE, results='asis'}
+with(quali, chisq.test(table(`Matériau emballage`, Préparation), simulate.p.value = T))
+```
+
+\rule{1\linewidth}{0.5pt}
+
+\newpage
+
+## Annexe 25 : matrice des corrélations entre variables qualitatives et quantitatives. {#A25}
+
+```{r Matrice des corrélation quali/quanti, echo = FALSE}
+round(matrice_eta2,2) %>% 
+  kable( "latex", booktabs = T, caption = "Matrice des corrélation entre variables qualitatives et quantitatives") %>%
+  kable_styling(latex_options = c("striped", "HOLD_position", "center", "scale_down")) %>%
+  landscape()
+  
+```
+
+\newpage
+
+## Annexe 26 : valeurs propres de l'ACP. {#A26}
+
+```{r Composantes principales, echo=FALSE}
+res.pca$eig %>% 
+  kable( "latex", booktabs = T, caption = "Table des valeurs propre de l'ACP") %>%
+  kable_styling(latex_options = c("striped", "HOLD_position", "center", "scale_down"))
+```
+
+```{r Composantes principales 2, echo=FALSE}
+barplot(res.pca$eig[,1], las = 2, main = "Diagramme en barre des valeurs propres 
+porté par chaque axe", ylab = "valeur propre")
+```
+
+\newpage
+
+## Annexe 27 : contribution et cos². {#A27}
+
+```{r Contribution et cos² axe 1, echo=FALSE}
+# 20 premiers individus selon leur contribution
+contrib_cos2 <- as.data.frame(res.pca$ind)[,c(6:7,11:12)]
+
+contrib_cos2_dm1 <- head(contrib_cos2 %>% arrange(desc(contrib.Dim.1)), n = 20L)
+contrib_cos2_dm2 <- head(contrib_cos2 %>% arrange(desc(contrib.Dim.2)), n = 20L)
+
+round(contrib_cos2_dm1, 2) %>% 
+  kable( "latex", booktabs = T, caption = "Tableau des cos² et des contributions selon les contibutions maximales des produits sur l'axe 1") %>%
+  kable_styling(latex_options = c("striped", "HOLD_position", "center", "scale_down"))
+```
+
+```{r Contribution et cos² axe 2, echo=FALSE}
+round(contrib_cos2_dm2, 2) %>% 
+  kable( "latex", booktabs = T, caption = "Tableau des cos² et des contributions selon les contibutions maximales des produits sur l'axe 2") %>%
+  kable_styling(latex_options = c("striped", "HOLD_position", "center", "scale_down"))
+```
+
+\newpage
+
+## Annexe 28 : coordonnées axe 1. {#A28}
+
+```{r Valeurs extrèmes max axe 1, echo=FALSE}
+coord<- as.data.frame(res.pca$ind$coord)[,1:2]
+
+round(head(coord %>% arrange(desc(Dim.1)), n = 20L),2) %>% 
+  kable( "latex", booktabs = T, caption = "Tableau des coordonnées les plus fortes sur l'axe 1") %>%
+  kable_styling(latex_options = c("striped", "HOLD_position", "center"))
+```
+
+```{r Valeurs extrèmes min axe 2, echo=FALSE}
+round(head(coord %>% arrange(Dim.1), n = 20L),2) %>% 
+  kable( "latex", booktabs = T, caption = "Tableau des coordonnées les moins fortes sur l'axe 1") %>%
+  kable_styling(latex_options = c("striped", "HOLD_position", "center", "scale_down"))
+```
+
+\newpage
+
+## Annexe 29 : coordonnées axe 2. {#A29}
+
+```{r Valeurs extrèmes max axe 2, echo=FALSE}
+round(head(coord %>% arrange(desc(Dim.2)), n = 20L),2) %>% 
+  kable( "latex", booktabs = T, caption = "Tableau des coordonnées les plus fortes sur l'axe 2") %>%
+  kable_styling(latex_options = c("striped", "HOLD_position", "center", "scale_down"))
+```
+
+```{rValeurs extrèmes max axe 2, echo=FALSE}
+round(head(coord %>% arrange(Dim.2), n = 20L),2) %>% 
+  kable( "latex", booktabs = T, caption = "Tableau des coordonnées les moins fortes sur l'axe 2") %>%
+  kable_styling(latex_options = c("striped", "HOLD_position", "center"))
+```
+
+\newpage
+
+## Annexe 30 : graphe des individus selon le groupe d'aliments. {#A30}
+
+```{r Graphe des individues par groupes, echo=FALSE, warning=FALSE}
+fviz_pca_ind(res.pca, repel = TRUE, col.ind = quali$`Groupe aliment`)
+```
+
+\newpage
+
+## Annexe 31 : cos² et corrélation. {#A31}
+
+```{r Cos², echo=FALSE}
+round(res.pca$var$cos2[,c(1,2)],3) %>% 
+  kable( "latex", booktabs = T, caption = "Tableau des cos² des variables avec les 2 premiers axes") %>%
+  kable_styling(latex_options = c("striped", "HOLD_position", "center"))
+```
+
+```{r corrélation., echo=FALSE}
+round(res.pca$var$cor[,c(1,2)],3) %>% 
+  kable( "latex", booktabs = T, caption = "Tableau des correlations des variables avec les 2 premiers axes") %>%
+  kable_styling(latex_options = c("striped", "HOLD_position", "center"))
+```
+
+\newpage
+
+## Annexe 32 : classe 1. {#A32}
+
+```{r classe 1, echo=FALSE}
+catdes.pca$quanti$`1` %>% 
+  kable( "latex", booktabs = T, caption = "Description de la classe 1 selon les variables quantitatives") %>%
+  kable_styling(latex_options = c("striped", "HOLD_position", "center", "scale_down"))
+```
+
+\newpage
+
+## Annexe 33 : classe 2. {#A33}
+
+```{r classe 2, echo=FALSE}
+catdes.pca$quanti$`2` %>% 
+  kable( "latex", booktabs = T, caption = "Description de la classe 2 selon les variables quantitatives") %>%
+  kable_styling(latex_options = c("striped", "HOLD_position", "center", "scale_down"))
+```
+
+\newpage
+
+## Annexe 34 : classe 3. {#A34}
+
+```{r classe 3, echo=FALSE}
+catdes.pca$quanti$`3` %>% 
+  kable( "latex", booktabs = T, caption = "Description de la classe 3 selon les variables quantitatives") %>%
+  kable_styling(latex_options = c("striped", "HOLD_position", "center", "scale_down"))
+```
